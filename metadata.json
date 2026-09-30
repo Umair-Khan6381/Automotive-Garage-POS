@@ -1,0 +1,7 @@
+{
+  "name": "Apex Auto POS & Workshop Management",
+  "description": "Complete automotive workshop management platform for repair job cards, vehicle service history, smart inventory, labour billing, and profit tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

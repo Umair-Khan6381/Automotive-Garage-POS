@@ -1,0 +1,441 @@
+// ==============================================================================
+// GARAGE POS & WORKSHOP MANAGEMENT SYSTEM
+// Prisma Schema Definition (SQLite)
+// File: backend/prisma/schema.prisma
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Garage Configuration
+model GarageSetting {
+  id                      String   @id @default("garage-config-main")
+  shopName                String   @default("Umair Ullah Auto Workshop")
+  garageName              String   @default("Umair Ullah Auto Workshop")
+  garageOwnerName         String   @default("Umair Ullah")
+  garagePhone             String   @default("+92 300 1234567")
+  garageEmail             String   @default("owner@example.com")
+  address                 String   @default("Main Workshop Boulevard, Commercial Area")
+  tagline                 String?  @default("Professional Mechanical, Electrical & Maintenance Services")
+  taxNumber               String?  @default("NTN-8923410-7")
+  currency                String   @default("Rs.")
+  defaultTaxRate          Float    @default(0.0)
+  invoicePrefix           String   @default("INV-2026-")
+  privateMode             Boolean  @default(true)
+  setupCompleted          Boolean  @default(true)
+  lowStockThreshold       Int      @default(5)
+  defaultOilIntervalKm    Int      @default(5000)
+  defaultOilIntervalMonths Int     @default(3)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+// 2. Users & RBAC Authentication
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  username     String     @unique
+  email        String     @unique
+  phone        String?
+  role         String     @default("employee") // owner, manager, employee
+  status       String     @default("active")   // active, disabled
+  passwordHash String
+  salt         String
+  lastLogin    DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditLogs    AuditLog[]
+}
+
+// 3. Customers
+model Customer {
+  id             String       @id @default(cuid())
+  fullName       String
+  phone          String
+  alternatePhone String?
+  email          String?
+  address        String?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  vehicles       Vehicle[]
+  repairJobs     RepairJob[]
+  invoices       Invoice[]
+  oilChanges     OilChange[]
+}
+
+// 4. Vehicles Fleet
+model Vehicle {
+  id                 String       @id @default(cuid())
+  customerId         String
+  registrationNumber String       @unique
+  make               String
+  model              String
+  year               Int?
+  color              String?
+  vin                String?
+  engineNumber       String?
+  currentMileage     Int          @default(0)
+  fuelType           String       @default("Petrol")
+  notes              String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  customer           Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  repairJobs         RepairJob[]
+  invoices           Invoice[]
+  oilChanges         OilChange[]
+}
+
+// 5. Product Categories
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+// 6. Suppliers
+model Supplier {
+  id        String     @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  products  Product[]
+  purchases Purchase[]
+  createdAt DateTime   @default(now())
+}
+
+// 7. Inventory Products & Spare Parts
+model Product {
+  id             String                 @id @default(cuid())
+  sku            String                 @unique
+  name           String
+  categoryId     String?
+  supplierId     String?
+  brand          String                 @default("Universal")
+  purchasePrice  Float                  @default(0.0)
+  sellingPrice   Float                  @default(0.0)
+  currentQuantity Int                   @default(0)
+  minStockLevel  Int                    @default(5)
+  unit           String                 @default("units")
+  shelfLocation  String?
+  description    String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  category       Category?              @relation(fields: [categoryId], references: [id])
+  supplier       Supplier?              @relation(fields: [supplierId], references: [id])
+  transactions   InventoryTransaction[]
+  purchaseItems  PurchaseItem[]
+  jobParts       JobPart[]
+  invoiceItems   InvoiceItem[]
+  oilChanges     OilChange[]
+}
+
+// 8. Auditable Inventory Stock Transactions
+model InventoryTransaction {
+  id          String   @id @default(cuid())
+  productId   String
+  type        String   // purchase, sale, job_usage, return, adjustment, damage, opening_stock
+  quantity    Int
+  unitCost    Float
+  referenceId String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// 9. Purchases (Stock POs)
+model Purchase {
+  id            String         @id @default(cuid())
+  invoiceNumber String?
+  supplierId    String?
+  date          DateTime       @default(now())
+  totalAmount   Float          @default(0.0)
+  notes         String?
+  createdBy     String?
+  createdAt     DateTime       @default(now())
+  supplier      Supplier?      @relation(fields: [supplierId], references: [id])
+  items         PurchaseItem[]
+}
+
+model PurchaseItem {
+  id          String   @id @default(cuid())
+  purchaseId  String
+  productId   String
+  quantity    Int
+  unitCost    Float
+  totalCost   Float
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+}
+
+// 10. Technicians & Labour Workers
+model LabourWorker {
+  id          String          @id @default(cuid())
+  name        String
+  phone       String
+  position    String
+  rateType    String          @default("daily") // daily, hourly, fixed_job
+  rateAmount  Float           @default(0.0)
+  status      String          @default("active")
+  createdAt   DateTime        @default(now())
+  payments    LabourPayment[]
+  assignments JobLabour[]
+}
+
+model LabourPayment {
+  id            String       @id @default(cuid())
+  workerId      String
+  date          DateTime     @default(now())
+  amount        Float        @default(0.0)
+  paymentMethod String       @default("Cash")
+  periodStart   DateTime?
+  periodEnd     DateTime?
+  notes         String?
+  createdAt     DateTime     @default(now())
+  worker        LabourWorker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+}
+
+// 11. Repair Job Cards
+model RepairJob {
+  id                String      @id @default(cuid())
+  jobNumber         String      @unique
+  customerId        String
+  vehicleId         String
+  date              DateTime    @default(now())
+  mileageIn         Int         @default(0)
+  customerComplaint String
+  diagnosis         String?
+  workRequired      String?
+  status            String      @default("draft") // draft, waiting, in_progress, completed, delivered, cancelled
+  estimatedCost     Float       @default(0.0)
+  finalCost         Float       @default(0.0)
+  invoiceId         String?
+  notes             String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  customer          Customer    @relation(fields: [customerId], references: [id])
+  vehicle           Vehicle     @relation(fields: [vehicleId], references: [id])
+  partsUsed         JobPart[]
+  labourAssigned    JobLabour[]
+  photos            JobPhoto[]
+}
+
+model JobPart {
+  id        String    @id @default(cuid())
+  jobId     String
+  productId String
+  quantity  Int
+  unitCost  Float
+  unitPrice Float
+  totalCost Float
+  totalPrice Float
+  job       RepairJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id])
+}
+
+model JobLabour {
+  id             String       @id @default(cuid())
+  jobId          String
+  workerId       String
+  units          Int          @default(1)
+  costToShop     Float        @default(0.0)
+  customerCharge Float        @default(0.0)
+  notes          String?
+  job            RepairJob    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  worker         LabourWorker @relation(fields: [workerId], references: [id])
+}
+
+model JobPhoto {
+  id        String    @id @default(cuid())
+  jobId     String
+  photoUrl  String
+  caption   String?
+  createdAt DateTime  @default(now())
+  job       RepairJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+// 12. Invoices & Billing Ledger
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  jobCardId     String?
+  customerId    String
+  vehicleId     String?
+  date          DateTime      @default(now())
+  partsTotal    Float         @default(0.0)
+  labourTotal   Float         @default(0.0)
+  servicesTotal Float         @default(0.0)
+  partsCost     Float         @default(0.0)
+  labourCost    Float         @default(0.0)
+  servicesCost  Float         @default(0.0)
+  discount      Float         @default(0.0)
+  taxRate       Float         @default(0.0)
+  taxAmount     Float         @default(0.0)
+  grandTotal    Float         @default(0.0)
+  paidAmount    Float         @default(0.0)
+  balanceDue    Float         @default(0.0)
+  paymentStatus String        @default("unpaid") // paid, partial, unpaid
+  paymentMethod String        @default("Cash")
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  vehicle       Vehicle?      @relation(fields: [vehicleId], references: [id])
+  items         InvoiceItem[]
+  payments      Payment[]
+}
+
+model InvoiceItem {
+  id         String   @id @default(cuid())
+  invoiceId  String
+  type       String   // part, labour, service
+  productId  String?
+  name       String
+  quantity   Int
+  unitPrice  Float
+  totalPrice Float
+  unitCost   Float    @default(0.0)
+  totalCost  Float    @default(0.0)
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product    Product? @relation(fields: [productId], references: [id])
+}
+
+// 13. Payments Receipts
+model Payment {
+  id              String   @id @default(cuid())
+  invoiceId       String
+  amount          Float
+  paymentDate     DateTime @default(now())
+  paymentMethod   String   @default("Cash") // Cash, Card, Bank Transfer, Online, Other
+  referenceNumber String?
+  receivedBy      String
+  notes           String?
+  createdAt       DateTime @default(now())
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+// 14. Operating Expenses & Daily Fixed Costs
+model Expense {
+  id               String   @id @default(cuid())
+  title            String
+  category         String   // Breakfast, Tea, Lunch, Dinner, Staff Food, Guest Food, Conveyance, Petrol/Fuel, Tools, Cleaning, Maintenance, etc.
+  type             String   @default("daily") // daily, fixed, workshop, legal
+  amount           Float
+  date             DateTime @default(now())
+  paymentMethod    String   @default("Cash") // Cash, Bank Transfer, EasyPaisa, JazzCash, Cheque
+  status           String   @default("Paid") // Paid, Pending, Partially Paid, Void
+  paidBy           String?
+  recipient        String?
+  receiptNumber    String?
+  notes            String?
+  attachment       String?
+  voidReason       String?
+  linkedEntityId   String?
+  linkedEntityType String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// 14b. Workshop Rent Ledger
+model WorkshopRent {
+  id            String   @id @default(cuid())
+  month         String   // YYYY-MM
+  monthLabel    String   // September 2026
+  amount        Float
+  paidAmount    Float    @default(0.0)
+  paymentDate   DateTime?
+  paymentMethod String   @default("Bank Transfer")
+  status        String   @default("Pending") // Paid, Partially Paid, Pending
+  notes         String?
+  attachment    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// 14c. Electricity Bills Tracker
+model ElectricityBill {
+  id              String   @id @default(cuid())
+  billingMonth    String   // YYYY-MM
+  monthLabel      String   // September 2026
+  billNumber      String?
+  previousReading Float?
+  currentReading  Float?
+  unitsConsumed   Float    @default(0.0)
+  billAmount      Float
+  paidAmount      Float    @default(0.0)
+  issueDate       DateTime @default(now())
+  dueDate         DateTime
+  paymentDate     DateTime?
+  paymentMethod   String   @default("Bank Transfer")
+  status          String   @default("Unpaid") // Paid, Partially Paid, Unpaid, Overdue
+  notes           String?
+  attachment      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// 14d. Official Licenses & Regulatory Permits
+model LicenseRecord {
+  id               String   @id @default(cuid())
+  name             String   // e.g. Workshop Municipal Trade License
+  licenseNumber    String
+  issuingAuthority String
+  issueDate        DateTime
+  expiryDate       DateTime
+  renewalCost      Float
+  paymentDate      DateTime?
+  paymentMethod    String   @default("Bank Transfer")
+  status           String   @default("Active") // Active, Expiring Soon, Expired, Pending Renewal
+  notes            String?
+  attachment       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// 15. Periodic Oil Change Records
+model OilChange {
+  id                    String    @id @default(cuid())
+  vehicleId             String
+  customerId            String
+  oilProductId          String?
+  serviceDate           DateTime  @default(now())
+  currentMileage        Int
+  nextRecommendedMileage Int
+  nextRecommendedDate   DateTime
+  oilBrand              String
+  oilType               String
+  oilQuantity           Float
+  oilFilterPartNumber   String?
+  technicianName        String
+  costPrice             Float     @default(0.0)
+  sellingPrice          Float     @default(0.0)
+  status                String    @default("upcoming") // upcoming, due, overdue, completed
+  notes                 String?
+  createdAt             DateTime  @default(now())
+  vehicle               Vehicle   @relation(fields: [vehicleId], references: [id])
+  customer              Customer  @relation(fields: [customerId], references: [id])
+  product               Product?  @relation(fields: [oilProductId], references: [id])
+}
+
+// 16. Audit Log Traceability
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  userName    String
+  userRole    String
+  module      String
+  action      String
+  recordId    String
+  description String
+  ipAddress   String?  @default("127.0.0.1")
+  timestamp   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+}

@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@layer base {
+  :root {
+    --font-sans: "Inter", sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --bg-base: #F5F5F3;
+    --bg-surface: #FFFFFF;
+    --text-primary: #202321;
+    --text-secondary: #6B706D;
+    --border-subtle: #DCDDD9;
+    --accent-teal: #1B4D3E;
+    --accent-teal-hover: #153E32;
+  }
+
+  *, *::before, *::after {
+    font-family: "Inter", sans-serif;
+  }
+
+  html, body {
+    font-family: "Inter", sans-serif;
+    background-color: #F5F5F3;
+    color: #202321;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* Dense table styling */
+  table {
+    border-collapse: collapse;
+  }
+
+  /* Standard form controls typography */
+  input, select, textarea, button {
+    font-family: "Inter", sans-serif;
+  }
+}
+
+.font-mono, [class*="font-mono"] {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+}
+
+/* Typography Hierarchy Specification */
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: #202321;
+}
+
+.section-heading {
+  font-size: 18px;
+  font-weight: 600;
+  color: #202321;
+}
+
+.panel-heading {
+  font-size: 16px;
+  font-weight: 600;
+  color: #202321;
+}
+
+.body-text {
+  font-size: 14px;
+  font-weight: 400;
+  color: #202321;
+}
+
+.table-text {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.nav-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.label-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B706D;
+}
+
+.input-text {
+  font-size: 14px;
+  font-weight: 400;
+  color: #202321;
+}
+
+.button-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.small-text {
+  font-size: 12px;
+  font-weight: 400;
+  color: #6B706D;
+}
+
+.helper-text {
+  font-size: 12px;
+  font-weight: 400;
+  color: #6B706D;
+}
+
+.metric-number {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.invoice-total {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+/* Custom utilitarian scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F5F5F3;
+}
+::-webkit-scrollbar-thumb {
+  background: #DCDDD9;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B8B9B4;
+}
+
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}

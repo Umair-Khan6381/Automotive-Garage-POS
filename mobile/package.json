@@ -1,0 +1,19 @@
+{
+  "name": "garage-pos-mobile",
+  "version": "2.0.0",
+  "description": "Mobile Application for Garage POS & Workshop Mechanics (Capacitor)",
+  "scripts": {
+    "sync": "cap sync",
+    "android": "cap open android",
+    "ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/camera": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/ios": "^7.0.0"
+  }
+}
