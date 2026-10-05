@@ -9,6 +9,8 @@ export interface PrintDocumentOptions {
   htmlContent?: string;
   pageSize?: 'A4' | 'A5' | 'Letter' | '80mm' | 'auto';
   scale?: number;
+  density?: 'compact' | 'normal' | 'spacious';
+  fitOnePage?: boolean;
   onBeforePrint?: () => void;
   onAfterPrint?: () => void;
 }
@@ -20,6 +22,8 @@ export const printDocument = (options: PrintDocumentOptions): boolean => {
     htmlContent,
     pageSize = 'A4',
     scale = 1.0,
+    density = 'normal',
+    fitOnePage = false,
     onBeforePrint,
     onAfterPrint
   } = options;
@@ -72,8 +76,30 @@ export const printDocument = (options: PrintDocumentOptions): boolean => {
         console.warn('Could not collect host styles:', styleErr);
       }
 
-      const pageTarget = pageSize === '80mm' ? '80mm auto' : pageSize === 'A5' ? 'A5 portrait' : pageSize === 'Letter' ? 'letter portrait' : 'A4 portrait';
-      const pageMargin = pageSize === '80mm' ? '2mm' : pageSize === 'A5' ? '5mm' : '8mm';
+      const pageTarget =
+        pageSize === '80mm'
+          ? '80mm auto'
+          : pageSize === 'A5'
+          ? 'A5 portrait'
+          : pageSize === 'Letter'
+          ? 'letter portrait'
+          : 'A4 portrait';
+
+      const pageMargin =
+        pageSize === '80mm'
+          ? '2mm'
+          : pageSize === 'A5'
+          ? fitOnePage ? '3mm' : '5mm'
+          : fitOnePage ? '5mm' : '8mm';
+
+      const baseFontSize =
+        pageSize === '80mm'
+          ? '10px'
+          : density === 'compact' || fitOnePage
+          ? '11px'
+          : '12px';
+
+      const effectiveScale = fitOnePage ? Math.min(scale, 0.88) : scale;
 
       frameDoc.open();
       frameDoc.write(`
@@ -90,18 +116,16 @@ export const printDocument = (options: PrintDocumentOptions): boolean => {
               *, *::before, *::after {
                 box-sizing: border-box;
               }
-              body {
+              html, body {
                 font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 background-color: #ffffff !important;
                 color: #202321 !important;
-                padding: ${pageSize === '80mm' ? '4mm' : '16px'};
-                max-width: ${pageSize === '80mm' ? '80mm' : '100%'};
-                margin: 0 auto;
-                font-size: ${pageSize === '80mm' ? '10px' : '12px'};
-                line-height: 1.4;
+                margin: 0 !important;
+                padding: 0 !important;
+                font-size: ${baseFontSize};
+                line-height: ${density === 'compact' ? '1.3' : '1.4'};
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
-                zoom: ${scale};
               }
               .font-mono {
                 font-family: 'JetBrains Mono', monospace !important;
@@ -116,15 +140,34 @@ export const printDocument = (options: PrintDocumentOptions): boolean => {
                 margin: ${pageMargin};
               }
               @media print {
-                body {
-                  padding: ${pageMargin} !important;
-                  zoom: ${scale} !important;
+                html, body {
+                  background-color: #ffffff !important;
+                  color: #202321 !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
                 }
+                .no-break {
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                }
+                tr {
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                }
+              }
+              .invoice-print-wrapper {
+                width: ${pageSize === '80mm' ? '76mm' : '100%'};
+                max-width: ${pageSize === '80mm' ? '76mm' : '100%'};
+                margin: 0 auto;
+                padding: ${pageSize === '80mm' ? '2mm' : pageMargin};
+                ${effectiveScale !== 1 ? `transform: scale(${effectiveScale}); transform-origin: top center;` : ''}
               }
             </style>
           </head>
           <body>
-            <div class="${pageSize === '80mm' ? 'w-[76mm] text-[10px]' : 'w-full'}">
+            <div class="invoice-print-wrapper">
               ${printableHTML}
             </div>
           </body>
@@ -142,7 +185,7 @@ export const printDocument = (options: PrintDocumentOptions): boolean => {
           window.print();
           if (onAfterPrint) onAfterPrint();
         }
-      }, 200);
+      }, 250);
 
       return true;
     }

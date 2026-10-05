@@ -32,6 +32,8 @@ import { DubaiPoliciesView } from './components/policies/DubaiPoliciesView';
 import { BottomNav } from './components/layout/BottomNav';
 import { GlobalSearchModal } from './components/common/GlobalSearchModal';
 import { NotificationDrawer } from './components/common/NotificationDrawer';
+import { QuickActionsModal } from './components/common/QuickActionsModal';
+import { KeyboardShortcutsModal } from './components/common/KeyboardShortcutsModal';
 
 const WorkshopAppContent: React.FC = () => {
   const { activeView, setupCompleted, currentUser, canAccess } = useShop();
@@ -135,6 +137,8 @@ const WorkshopAppContent: React.FC = () => {
       {/* Global Utilities */}
       <GlobalSearchModal />
       <NotificationDrawer />
+      <QuickActionsModal />
+      <KeyboardShortcutsModal />
     </div>
   );
 };

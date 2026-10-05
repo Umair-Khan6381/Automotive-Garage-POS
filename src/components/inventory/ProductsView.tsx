@@ -349,13 +349,13 @@ export const ProductsView: React.FC = () => {
                         {p.location || '—'}
                       </td>
 
-                      <td className="px-3 py-2.5 text-right font-mono font-bold">
+                      <td className="px-3 py-2.5 text-right font-mono font-semibold">
                         <span
-                          className={`inline-block px-1.5 py-0.5 rounded text-xs ${
+                          className={`inline-block px-2 py-0.5 rounded text-xs tabular-nums ${
                             isOut
-                              ? 'bg-[#FEE2E2] text-[#DC2626]'
+                              ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-600/20 font-bold'
                               : isLow
-                              ? 'bg-[#FEF3C7] text-[#B45309]'
+                              ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-600/20 font-bold'
                               : 'text-[#202321]'
                           }`}
                         >

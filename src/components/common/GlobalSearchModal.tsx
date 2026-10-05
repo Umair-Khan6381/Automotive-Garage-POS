@@ -32,7 +32,7 @@ export const GlobalSearchModal: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 's' || e.key === 'S')) {
         e.preventDefault();
         setIsSearchOpen(!isSearchOpen);
       } else if (e.key === 'Escape' && isSearchOpen) {

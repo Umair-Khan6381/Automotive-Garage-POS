@@ -254,19 +254,19 @@ export const JobCardsView: React.FC = () => {
   const getStatusBadge = (status: JobStatus) => {
     switch (status) {
       case 'in_progress':
-        return 'bg-[#FEF3C7] text-[#B45309] border-[#FDE68A]';
+        return 'bg-amber-50 text-amber-800 ring-1 ring-amber-600/20';
       case 'inspection':
-        return 'bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]';
+        return 'bg-blue-50 text-blue-800 ring-1 ring-blue-600/20';
       case 'waiting_for_parts':
-        return 'bg-[#FEE2E2] text-[#DC2626] border-[#FECACA]';
+        return 'bg-rose-50 text-rose-800 ring-1 ring-rose-600/20';
       case 'completed':
-        return 'bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0]';
+        return 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600/20';
       case 'delivered':
-        return 'bg-[#E8F0EC] text-[#1B4D3E] border-[#A7D7C5]';
+        return 'bg-[#E8F0EC] text-[#1B4D3E] ring-1 ring-[#1B4D3E]/25';
       case 'cancelled':
-        return 'bg-[#F5F5F3] text-[#6B706D] border-[#DCDDD9]';
+        return 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200';
       default:
-        return 'bg-[#F5F5F3] text-[#6B706D] border-[#DCDDD9]';
+        return 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200';
     }
   };
 

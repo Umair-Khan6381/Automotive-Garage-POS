@@ -234,14 +234,14 @@ export const InvoicesView: React.FC = () => {
 
                       <td className="px-3 py-2.5 text-center">
                         <span
-                          className={`inline-block px-2 py-0.5 rounded border text-[10px] font-semibold uppercase ${
+                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
                             inv.paymentStatus === 'Paid'
-                              ? 'bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0]'
+                              ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600/20'
                               : inv.paymentStatus === 'Partially Paid'
-                              ? 'bg-[#FEF3C7] text-[#B45309] border-[#FDE68A]'
+                              ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-600/20'
                               : inv.paymentStatus === 'Cancelled'
-                              ? 'bg-[#FEE2E2] text-[#DC2626] border-[#FECACA]'
-                              : 'bg-[#FEE2E2] text-[#DC2626] border-[#FECACA]'
+                              ? 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'
+                              : 'bg-rose-50 text-rose-800 ring-1 ring-rose-600/20'
                           }`}
                         >
                           {inv.paymentStatus}

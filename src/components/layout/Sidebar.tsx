@@ -183,15 +183,15 @@ export const Sidebar: React.FC = () => {
                     <button
                       key={item.id}
                       onClick={() => handleNavClick(item.id)}
-                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                      className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium transition-all ${
                         isActive
-                          ? 'bg-[#1B4D3E] text-white font-semibold'
-                          : 'text-[#202321] hover:bg-[#F5F5F3]'
+                          ? 'bg-[#1B4D3E] text-white font-medium shadow-xs'
+                          : 'text-[#202321] hover:bg-[#F0F2F0] hover:text-[#1B4D3E]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <Icon
-                          className={`h-4 w-4 shrink-0 ${
+                          className={`h-4 w-4 shrink-0 transition-colors ${
                             isActive ? 'text-white' : 'text-[#6B706D]'
                           }`}
                         />
@@ -200,12 +200,12 @@ export const Sidebar: React.FC = () => {
 
                       {item.badge !== undefined && item.badge > 0 && (
                         <span
-                          className={`rounded px-1.5 py-0.2 text-[10px] font-mono tabular-nums font-semibold shrink-0 ${
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-mono tabular-nums font-semibold shrink-0 ${
                             isActive
                               ? 'bg-white/20 text-white'
                               : item.badgeVariant === 'red'
-                              ? 'bg-[#FEE2E2] text-[#DC2626]'
-                              : 'bg-[#FEF3C7] text-[#B45309]'
+                              ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-600/10'
+                              : 'bg-amber-50 text-amber-800 ring-1 ring-amber-600/10'
                           }`}
                         >
                           {item.badge}
@@ -222,8 +222,8 @@ export const Sidebar: React.FC = () => {
 
       {/* Footer Info */}
       <div className="mt-4 border-t border-[#DCDDD9] pt-3 px-1 space-y-2">
-        <div className="rounded border border-[#DCDDD9] bg-[#F5F5F3] p-2.5 text-[11px] text-[#6B706D]">
-          <div className="flex items-center gap-1.5 font-semibold text-[#1B4D3E]">
+        <div className="rounded-md border border-[#DCDDD9] bg-[#F8F9FA] p-2.5 text-[11px] text-[#6B706D] shadow-2xs">
+          <div className="flex items-center gap-1.5 font-medium text-[#1B4D3E]">
             <Lock className="h-3 w-3" />
             <span>Private Garage Mode</span>
           </div>

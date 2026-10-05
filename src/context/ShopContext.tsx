@@ -27,7 +27,8 @@ import {
   PaymentProof,
   InvoicePrintEvent,
   UserSessionRecord,
-  RecordChangeEntry
+  RecordChangeEntry,
+  ZReportRecord
 } from '../types';
 import {
   INITIAL_SETTINGS,
@@ -103,6 +104,10 @@ interface ShopContextType {
   setIsSearchOpen: (open: boolean) => void;
   isNotificationsOpen: boolean;
   setIsNotificationsOpen: (open: boolean) => void;
+  isQuickActionsOpen: boolean;
+  setIsQuickActionsOpen: (open: boolean) => void;
+  quickActionTargetModal: 'job' | 'expense' | 'payment' | null;
+  setQuickActionTargetModal: (modal: 'job' | 'expense' | 'payment' | null) => void;
 
   // Selected Entity Quick Views
   selectedCustomerId: string | null;
@@ -245,6 +250,10 @@ interface ShopContextType {
   attachPaymentProof: (paymentId: string, proof: PaymentProof) => void;
   recordCustomerPaymentWithProof: (invoiceId: string, amount: number, paymentMethod: PaymentMethod, proof?: PaymentProof, notes?: string) => PaymentRecord;
   recordLabourPaymentWithProof: (workerId: string, amount: number, paymentMethod: PaymentMethod, period: string, proof?: PaymentProof, notes?: string) => LabourPayment;
+
+  // End-of-Day Z-Report / Cash Drawer Close
+  zReports: ZReportRecord[];
+  recordZReport: (data: Omit<ZReportRecord, 'id' | 'reportNumber' | 'closedAt' | 'closedBy' | 'closedByName'>) => ZReportRecord;
 
   // Backup & Restore
   createBackupPayload: () => string;
@@ -397,6 +406,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isMobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState<boolean>(false);
+  const [quickActionTargetModal, setQuickActionTargetModal] = useState<'job' | 'expense' | 'payment' | null>(null);
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
@@ -508,6 +519,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : INITIAL_PAYMENT_PROOFS;
   });
 
+  // End-of-Day Z-Reports Vault
+  const [zReports, setZReports] = useState<ZReportRecord[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_zreports`);
+    return saved ? JSON.parse(saved) : [];
+  });
+
   // Sync to localStorage
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(allUsers));
@@ -532,6 +549,10 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_payment_proofs`, JSON.stringify(paymentProofs));
   }, [paymentProofs]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY}_zreports`, JSON.stringify(zReports));
+  }, [zReports]);
 
   useEffect(() => {
     if (currentSession) {
@@ -2267,6 +2288,31 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logAction('Settings Updated', 'Settings', 'global', 'Updated workshop configuration');
   };
 
+  // End-of-Day Z-Report Record
+  const recordZReport = (data: Omit<ZReportRecord, 'id' | 'reportNumber' | 'closedAt' | 'closedBy' | 'closedByName'>): ZReportRecord => {
+    const newId = `zrep-${Date.now()}`;
+    const dateStamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const reportNum = `ZREP-${dateStamp}-${(zReports.length + 1).toString().padStart(3, '0')}`;
+    const newRecord: ZReportRecord = {
+      ...data,
+      id: newId,
+      reportNumber: reportNum,
+      closedAt: new Date().toISOString(),
+      closedBy: currentUser?.id || 'staff-1',
+      closedByName: currentUser?.name || 'Cashier / Manager'
+    };
+
+    setZReports(prev => [newRecord, ...prev]);
+    logAction(
+      'Cash Drawer Shift Closed',
+      'ZReport',
+      newId,
+      `Z-Report #${reportNum} closed by ${newRecord.closedByName}. Revenue: AED ${data.totalSales.toFixed(2)}, Expected Cash: AED ${data.expectedCash.toFixed(2)}, Counted Cash: AED ${data.countedCash.toFixed(2)}, Variance: AED ${data.variance.toFixed(2)}`
+    );
+
+    return newRecord;
+  };
+
   // Backup & Restore
   const createBackupPayload = (): string => {
     const payload = {
@@ -2375,6 +2421,10 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsSearchOpen,
         isNotificationsOpen,
         setIsNotificationsOpen,
+        isQuickActionsOpen,
+        setIsQuickActionsOpen,
+        quickActionTargetModal,
+        setQuickActionTargetModal,
         selectedCustomerId,
         setSelectedCustomerId,
         selectedVehicleId,
@@ -2474,6 +2524,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         attachPaymentProof,
         recordCustomerPaymentWithProof,
         recordLabourPaymentWithProof,
+        zReports,
+        recordZReport,
         createBackupPayload,
         restoreDatabase,
         resetToDemoData

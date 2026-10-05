@@ -12,7 +12,10 @@ import {
   UserPlus,
   Database,
   Download,
-  Upload
+  Upload,
+  Printer,
+  Sliders,
+  Sparkles
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 
@@ -46,6 +49,21 @@ export const SettingsView: React.FC = () => {
   const [dailyStorageFeeAED, setDailyStorageFeeAED] = useState(settings.dailyStorageFeeAED || 50);
   const [workmanshipWarrantyDays, setWorkmanshipWarrantyDays] = useState(settings.workmanshipWarrantyDays || 90);
   const [workmanshipWarrantyKm, setWorkmanshipWarrantyKm] = useState(settings.workmanshipWarrantyKm || 5000);
+
+  // Default Invoice Paper & Sizing Preferences
+  const [defaultPaperSize, setDefaultPaperSize] = useState<'A4' | 'A5' | '80mm' | 'Letter'>(() => {
+    return (localStorage.getItem('umair_invoice_paper_size') as any) || 'A4';
+  });
+  const [defaultInvoiceScale, setDefaultInvoiceScale] = useState<number>(() => {
+    const s = localStorage.getItem('umair_invoice_zoom_level');
+    return s ? Number(s) : 100;
+  });
+  const [defaultInvoiceDensity, setDefaultInvoiceDensity] = useState<'compact' | 'normal' | 'spacious'>(() => {
+    return (localStorage.getItem('umair_invoice_density') as any) || 'normal';
+  });
+  const [defaultFitOnePage, setDefaultFitOnePage] = useState<boolean>(() => {
+    return localStorage.getItem('umair_invoice_fit_one_page') === 'true';
+  });
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -348,6 +366,146 @@ export const SettingsView: React.FC = () => {
                 onChange={e => setInvoiceFooterNote(e.target.value)}
                 className="w-full rounded border border-[#DCDDD9] px-2.5 py-1.5 focus:border-[#1B4D3E] focus:outline-none"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 4: Default Invoice Print Size & Paper Formats */}
+        <div className="rounded border border-[#DCDDD9] bg-white p-4 space-y-3">
+          <div className="flex items-center justify-between border-b border-[#DCDDD9] pb-2">
+            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-[#202321]">
+              <Printer className="h-4 w-4 text-[#1B4D3E]" />
+              <span>Default Invoice Print Size & Paper Format (ڈیفالٹ انوائس سائز ایڈجسٹمنٹ)</span>
+            </div>
+            <span className="rounded bg-[#E8F0EC] px-2 py-0.5 text-[10px] font-bold text-[#1B4D3E]">
+              Current: {defaultPaperSize} ({defaultInvoiceScale}%)
+            </span>
+          </div>
+
+          <p className="text-xs text-[#6B706D]">
+            Set the default paper size, zoom scale, and layout density for invoices generated in POS, Workshop Job Cards, and Billing.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            {/* Paper Size Setting */}
+            <div>
+              <label className="text-[11px] font-bold text-[#202321] block mb-1.5">
+                Default Target Paper:
+              </label>
+              <div className="space-y-1.5">
+                {[
+                  { id: 'A4', label: 'A4 (210 × 297 mm)', desc: 'Standard Full Page Tax Invoice' },
+                  { id: 'A5', label: 'A5 (148 × 210 mm)', desc: 'Half-Sheet (Saves 50% Paper)' },
+                  { id: '80mm', label: '80mm Thermal Slip', desc: 'Continuous POS Counter Receipt' },
+                  { id: 'Letter', label: 'US Letter (8.5 × 11 in)', desc: 'North American Standard' }
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setDefaultPaperSize(opt.id as any);
+                      localStorage.setItem('umair_invoice_paper_size', opt.id);
+                      localStorage.setItem('umair_invoice_modal_size', opt.id === '80mm' ? 'thermal' : opt.id === 'A5' ? 'compact' : 'a4');
+                    }}
+                    className={`w-full text-left p-2 rounded border transition-all ${
+                      defaultPaperSize === opt.id
+                        ? 'border-[#1B4D3E] bg-[#E8F0EC] text-[#1B4D3E] font-bold shadow-2xs'
+                        : 'border-[#DCDDD9] bg-white text-[#202321] hover:bg-[#FAFAF9]'
+                    }`}
+                  >
+                    <div className="text-xs font-semibold">{opt.label}</div>
+                    <div className="text-[10px] opacity-75">{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Default Scale Level */}
+            <div>
+              <label className="text-[11px] font-bold text-[#202321] block mb-1.5">
+                Default Print & Preview Scale:
+              </label>
+              <div className="space-y-1.5">
+                {[
+                  { scale: 80, label: '80% (Compact Single-Page)', desc: 'Guaranteed 1-Page Fit for long jobs' },
+                  { scale: 85, label: '85% (Optimized Fit)', desc: 'Recommended balanced single page' },
+                  { scale: 100, label: '100% (Standard 1:1)', desc: 'Exact physical proportions' },
+                  { scale: 115, label: '115% (High Visibility)', desc: 'Enlarged text for easy reading' }
+                ].map(opt => (
+                  <button
+                    key={opt.scale}
+                    type="button"
+                    onClick={() => {
+                      setDefaultInvoiceScale(opt.scale);
+                      localStorage.setItem('umair_invoice_zoom_level', opt.scale.toString());
+                    }}
+                    className={`w-full text-left p-2 rounded border transition-all ${
+                      defaultInvoiceScale === opt.scale
+                        ? 'border-[#1B4D3E] bg-[#E8F0EC] text-[#1B4D3E] font-bold shadow-2xs'
+                        : 'border-[#DCDDD9] bg-white text-[#202321] hover:bg-[#FAFAF9]'
+                    }`}
+                  >
+                    <div className="text-xs font-semibold">{opt.label}</div>
+                    <div className="text-[10px] opacity-75">{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Default Density & Fit Feature */}
+            <div>
+              <label className="text-[11px] font-bold text-[#202321] block mb-1.5">
+                Default Layout Density:
+              </label>
+              <div className="space-y-1.5">
+                {[
+                  { id: 'compact', label: 'Compact Spacing', desc: 'Tight margins & rows for 1-page bills' },
+                  { id: 'normal', label: 'Standard Spacing', desc: 'Standard business margins' },
+                  { id: 'spacious', label: 'Spacious / Relaxed', desc: 'Larger breathing room between items' }
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setDefaultInvoiceDensity(opt.id as any);
+                      localStorage.setItem('umair_invoice_density', opt.id);
+                    }}
+                    className={`w-full text-left p-2 rounded border transition-all ${
+                      defaultInvoiceDensity === opt.id
+                        ? 'border-[#1B4D3E] bg-[#E8F0EC] text-[#1B4D3E] font-bold shadow-2xs'
+                        : 'border-[#DCDDD9] bg-white text-[#202321] hover:bg-[#FAFAF9]'
+                    }`}
+                  >
+                    <div className="text-xs font-semibold">{opt.label}</div>
+                    <div className="text-[10px] opacity-75">{opt.desc}</div>
+                  </button>
+                ))}
+
+                {/* Auto Single-Page Fit Default */}
+                <div className="pt-2">
+                  <label className="flex items-center gap-2 p-2 rounded border border-[#DCDDD9] bg-[#FAFAF9] cursor-pointer hover:bg-white transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={defaultFitOnePage}
+                      onChange={e => {
+                        setDefaultFitOnePage(e.target.checked);
+                        localStorage.setItem('umair_invoice_fit_one_page', e.target.checked ? 'true' : 'false');
+                        if (e.target.checked) {
+                          setDefaultInvoiceDensity('compact');
+                          setDefaultInvoiceScale(85);
+                          localStorage.setItem('umair_invoice_density', 'compact');
+                          localStorage.setItem('umair_invoice_zoom_level', '85');
+                        }
+                      }}
+                      className="accent-[#1B4D3E] h-4 w-4 rounded"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-[#202321]">Always Fit on 1 Single Page</div>
+                      <div className="text-[10px] text-[#6B706D]">Prevents invoice details from overflowing to a 2nd sheet</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         </div>

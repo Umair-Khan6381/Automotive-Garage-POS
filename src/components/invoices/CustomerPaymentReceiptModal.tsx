@@ -47,27 +47,47 @@ export const CustomerPaymentReceiptModal: React.FC<CustomerPaymentReceiptModalPr
   notes
 }) => {
   const [printFeedback, setPrintFeedback] = useState<string | null>(null);
+  const [paperSize, setPaperSize] = useState<'80mm' | 'A5' | 'A4'>(() => {
+    return (localStorage.getItem('umair_receipt_paper_size') as any) || '80mm';
+  });
+  const [scale, setScale] = useState<number>(() => {
+    const saved = localStorage.getItem('umair_receipt_scale');
+    return saved ? Number(saved) : 100;
+  });
 
   if (!isOpen) return null;
+
+  const handlePaperChange = (p: '80mm' | 'A5' | 'A4') => {
+    setPaperSize(p);
+    localStorage.setItem('umair_receipt_paper_size', p);
+  };
+
+  const handleScaleChange = (s: number) => {
+    const clamped = Math.max(70, Math.min(130, s));
+    setScale(clamped);
+    localStorage.setItem('umair_receipt_scale', clamped.toString());
+  };
 
   const handlePrint = () => {
     printDocument({
       title: `Payment_Receipt_${receiptNumber}`,
       elementId: 'printable-payment-receipt',
+      pageSize: paperSize,
+      scale: scale / 100,
       onAfterPrint: () => {
-        setPrintFeedback('Receipt sent to printer');
+        setPrintFeedback(`Receipt printed (${paperSize} · ${scale}%)`);
         setTimeout(() => setPrintFeedback(null), 3000);
       }
     });
-    setPrintFeedback('Printing receipt...');
+    setPrintFeedback(`Sending ${paperSize} receipt to printer...`);
     setTimeout(() => setPrintFeedback(null), 3000);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#202321]/50 p-4 backdrop-blur-2xs font-sans">
-      <div className="w-full max-w-md rounded-lg border border-[#DCDDD9] bg-white p-5 shadow-2xl max-h-[92vh] flex flex-col">
+      <div className={`w-full ${paperSize === '80mm' ? 'max-w-sm' : 'max-w-md'} rounded-lg border border-[#DCDDD9] bg-white p-5 shadow-2xl max-h-[92vh] flex flex-col transition-all duration-200`}>
         {/* Header toolbar */}
-        <div className="flex items-center justify-between border-b border-[#DCDDD9] pb-3 mb-4 no-print">
+        <div className="flex items-center justify-between border-b border-[#DCDDD9] pb-3 mb-3 no-print">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded bg-[#DCFCE7] text-[#15803D]">
               <Receipt className="h-5 w-5" />
@@ -84,15 +104,69 @@ export const CustomerPaymentReceiptModal: React.FC<CustomerPaymentReceiptModalPr
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-[#6B706D] hover:bg-[#F5F5F3] hover:text-[#202321]"
+            className="rounded p-1 text-[#6B706D] hover:bg-[#F5F5F3] hover:text-[#202321] cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
+        {/* Size & Paper Adjuster Bar */}
+        <div className="no-print flex items-center justify-between gap-2 border border-[#DCDDD9] bg-[#F5F5F3] rounded p-2 mb-3 text-xs">
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] font-bold text-[#6B706D]">Size:</span>
+            <div className="inline-flex rounded border border-[#DCDDD9] bg-white p-0.5 shadow-2xs">
+              {(['80mm', 'A5', 'A4'] as const).map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => handlePaperChange(p)}
+                  className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors ${
+                    paperSize === p
+                      ? 'bg-[#1B4D3E] text-white shadow-2xs'
+                      : 'text-[#6B706D] hover:text-[#202321] hover:bg-[#F5F5F3]'
+                  }`}
+                >
+                  {p === '80mm' ? '80mm Slip' : p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] font-bold text-[#6B706D]">Scale:</span>
+            <div className="inline-flex items-center rounded border border-[#DCDDD9] bg-white p-0.5 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => handleScaleChange(scale - 5)}
+                disabled={scale <= 70}
+                className="px-1.5 py-0.5 text-[10px] font-bold text-[#6B706D] hover:bg-[#F5F5F3] disabled:opacity-30 cursor-pointer"
+              >
+                -
+              </button>
+              <span className="px-1.5 text-[10px] font-mono font-bold">{scale}%</span>
+              <button
+                type="button"
+                onClick={() => handleScaleChange(scale + 5)}
+                disabled={scale >= 130}
+                className="px-1.5 py-0.5 text-[10px] font-bold text-[#6B706D] hover:bg-[#F5F5F3] disabled:opacity-30 cursor-pointer"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {printFeedback && (
+          <div className="no-print mb-2 p-1.5 rounded bg-[#DCFCE7] text-[#15803D] text-[11px] font-semibold flex items-center gap-1.5">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            <span>{printFeedback}</span>
+          </div>
+        )}
+
         {/* Printable Receipt Paper */}
         <div
           id="printable-payment-receipt"
+          style={{ zoom: `${scale}%` }}
           className="flex-1 overflow-y-auto rounded border border-[#DCDDD9] bg-[#FAFAF9] p-5 text-xs text-[#202321] space-y-4 print-container"
         >
           {/* Business Header */}

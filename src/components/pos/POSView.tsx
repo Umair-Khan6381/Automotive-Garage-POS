@@ -988,7 +988,7 @@ export const POSView: React.FC = () => {
                   Payment Method
                 </label>
                 <div className="flex gap-1">
-                  {(['Cash', 'Card', 'Bank Transfer', 'Other'] as PaymentMethod[]).map(pm => (
+                  {(['Cash', 'Card', 'Bank Transfer', 'Online', 'Other'] as PaymentMethod[]).map(pm => (
                     <button
                       key={pm}
                       type="button"
@@ -999,7 +999,7 @@ export const POSView: React.FC = () => {
                           : 'border-[#DCDDD9] bg-white text-[#6B706D] hover:bg-[#F5F5F3]'
                       }`}
                     >
-                      {pm === 'Other' ? 'Cheque' : pm}
+                      {pm}
                     </button>
                   ))}
                 </div>
@@ -1017,13 +1017,45 @@ export const POSView: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-[#6B706D] block mb-0.5">Balance Due:</label>
+                  <label className="text-[10px] text-[#6B706D] block mb-0.5">
+                    {amountPaid !== null && amountPaid > grandTotal ? 'Change to Return:' : 'Balance Due:'}
+                  </label>
                   <div className={`p-1 rounded font-mono font-bold text-xs ${
-                    balanceDue > 0 ? 'text-[#DC2626] bg-[#FEE2E2]' : 'text-[#15803D] bg-[#DCFCE7]'
+                    amountPaid !== null && amountPaid > grandTotal
+                      ? 'text-[#15803D] bg-[#DCFCE7]'
+                      : balanceDue > 0
+                      ? 'text-[#DC2626] bg-[#FEE2E2]'
+                      : 'text-[#15803D] bg-[#DCFCE7]'
                   }`}>
-                    {formatAED(balanceDue)}
+                    {amountPaid !== null && amountPaid > grandTotal
+                      ? formatAED(amountPaid - grandTotal)
+                      : formatAED(balanceDue)}
                   </div>
                 </div>
+
+                {/* Friendly Quick Cash Tender Pills */}
+                {paymentMethod === 'Cash' && (
+                  <div className="col-span-2 flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span className="text-[10px] font-semibold text-[#6B706D]">Quick Tender:</span>
+                    <button
+                      type="button"
+                      onClick={() => setAmountPaid(grandTotal)}
+                      className="px-2 py-0.5 rounded text-[10px] font-mono bg-white border border-[#DCDDD9] text-[#202321] hover:bg-[#F5F5F3] cursor-pointer"
+                    >
+                      Exact
+                    </button>
+                    {[50, 100, 200, 500, 1000].map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setAmountPaid(amt)}
+                        className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white border border-[#DCDDD9] text-[#1B4D3E] hover:bg-[#E8F0EC] hover:border-[#1B4D3E] cursor-pointer transition-colors"
+                      >
+                        {amt}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Notes */}

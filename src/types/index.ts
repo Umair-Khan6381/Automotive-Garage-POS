@@ -314,7 +314,7 @@ export interface JobCard {
   updatedAt?: string;
 }
 
-export type PaymentMethod = 'Cash' | 'Bank Transfer' | 'Card' | 'Other';
+export type PaymentMethod = 'Cash' | 'Bank Transfer' | 'Card' | 'Online' | 'Cheque' | 'Other';
 export type PaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid' | 'Cancelled';
 
 export interface InvoiceItem {
@@ -582,9 +582,30 @@ export interface AuditLog {
   userName: string;
   userRole: UserRole;
   action: string;
-  module: 'Auth' | 'User' | 'Customer' | 'Vehicle' | 'Inventory' | 'Purchase' | 'Job' | 'Labour' | 'Invoice' | 'Payment' | 'Expenses' | 'Settings';
+  module: 'Auth' | 'User' | 'Customer' | 'Vehicle' | 'Inventory' | 'Purchase' | 'Job' | 'Labour' | 'Invoice' | 'Payment' | 'Expenses' | 'Settings' | 'ZReport';
   recordId: string;
   description: string;
+}
+
+export interface ZReportRecord {
+  id: string;
+  reportNumber: string;
+  date: string;
+  closedAt: string;
+  closedBy: string;
+  closedByName: string;
+  openingFloat: number;
+  cashSales: number;
+  cardSales: number;
+  bankSales: number;
+  chequeSales: number;
+  totalSales: number;
+  cashExpenses: number;
+  expectedCash: number;
+  countedCash: number;
+  variance: number; // countedCash - expectedCash
+  invoicesCount: number;
+  notes?: string;
 }
 
 export interface ShopSettings {
