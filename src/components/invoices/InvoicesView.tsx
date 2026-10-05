@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { Invoice, PaymentMethod } from '../../types';
-import { formatPKR, formatDate } from '../../utils/formatters';
+import { formatAED, formatDate } from '../../utils/formatters';
 import { InvoiceDetailModal } from './InvoiceDetailModal';
 
 export const InvoicesView: React.FC = () => {
@@ -19,6 +19,7 @@ export const InvoicesView: React.FC = () => {
     customers,
     vehicles,
     recordInvoicePayment,
+    cancelInvoice,
     deleteInvoice,
     setActiveView
   } = useShop();
@@ -98,7 +99,7 @@ export const InvoicesView: React.FC = () => {
             Total Billing Issued
           </div>
           <div className="mt-1 text-lg font-bold font-mono text-[#202321]">
-            {formatPKR(totalInvoiced)}
+            {formatAED(totalInvoiced)}
           </div>
           <div className="text-[10px] text-[#6B706D] mt-0.5">
             {invoices.length} invoices generated
@@ -110,7 +111,7 @@ export const InvoicesView: React.FC = () => {
             Cash & Bank Collected
           </div>
           <div className="mt-1 text-lg font-bold font-mono text-[#15803D]">
-            {formatPKR(totalCollected)}
+            {formatAED(totalCollected)}
           </div>
           <div className="text-[10px] text-[#6B706D] mt-0.5">
             Disbursed and deposited
@@ -122,7 +123,7 @@ export const InvoicesView: React.FC = () => {
             Outstanding Receivables
           </div>
           <div className="mt-1 text-lg font-bold font-mono text-[#B45309]">
-            {formatPKR(totalReceivables)}
+            {formatAED(totalReceivables)}
           </div>
           <div className="text-[10px] text-[#6B706D] mt-0.5">
             Unpaid or partial balances
@@ -144,7 +145,7 @@ export const InvoicesView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto p-1 bg-white border border-[#DCDDD9] rounded text-xs">
-          {['all', 'Paid', 'Partially Paid', 'Unpaid'].map(st => (
+          {['all', 'Paid', 'Partially Paid', 'Unpaid', 'Cancelled'].map(st => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
@@ -170,7 +171,7 @@ export const InvoicesView: React.FC = () => {
                 <th className="px-3 py-2.5">Date</th>
                 <th className="px-3 py-2.5">Customer</th>
                 <th className="px-3 py-2.5">Vehicle Plate</th>
-                <th className="px-3 py-2.5 text-right">Total (PKR)</th>
+                <th className="px-3 py-2.5 text-right">Total (AED)</th>
                 <th className="px-3 py-2.5 text-right">Paid</th>
                 <th className="px-3 py-2.5 text-right">Balance Due</th>
                 <th className="px-3 py-2.5 text-center">Payment Status</th>
@@ -188,15 +189,18 @@ export const InvoicesView: React.FC = () => {
                 filteredInvoices.map(inv => {
                   const cust = customers.find(c => c.id === inv.customerId);
                   const veh = vehicles.find(v => v.id === inv.vehicleId);
+                  const isCancelled = inv.paymentStatus === 'Cancelled' || inv.isCancelled;
 
                   return (
                     <tr
                       key={inv.id}
                       onClick={() => setSelectedInvoiceForModal(inv.id)}
-                      className="hover:bg-[#F5F5F3] cursor-pointer transition-colors"
+                      className={`hover:bg-[#F5F5F3] cursor-pointer transition-colors ${isCancelled ? 'bg-[#FEF2F2]/40 opacity-80' : ''}`}
                     >
                       <td className="px-3.5 py-2.5 font-mono font-bold text-[#1B4D3E]">
-                        {inv.invoiceNumber}
+                        <span className={isCancelled ? 'line-through text-[#6B706D]' : ''}>
+                          {inv.invoiceNumber}
+                        </span>
                       </td>
 
                       <td className="px-3 py-2.5 font-mono text-[#6B706D]">
@@ -215,16 +219,16 @@ export const InvoicesView: React.FC = () => {
                       </td>
 
                       <td className="px-3 py-2.5 text-right font-mono font-bold text-[#202321] tabular-nums">
-                        {formatPKR(inv.grandTotal)}
+                        {formatAED(inv.grandTotal)}
                       </td>
 
                       <td className="px-3 py-2.5 text-right font-mono text-[#15803D] tabular-nums">
-                        {formatPKR(inv.paidAmount)}
+                        {formatAED(inv.paidAmount)}
                       </td>
 
                       <td className="px-3 py-2.5 text-right font-mono tabular-nums font-bold">
-                        <span className={inv.balanceDue > 0 ? 'text-[#DC2626]' : 'text-[#6B706D]'}>
-                          {formatPKR(inv.balanceDue)}
+                        <span className={inv.balanceDue > 0 && !isCancelled ? 'text-[#DC2626]' : 'text-[#6B706D]'}>
+                          {formatAED(inv.balanceDue)}
                         </span>
                       </td>
 
@@ -235,6 +239,8 @@ export const InvoicesView: React.FC = () => {
                               ? 'bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0]'
                               : inv.paymentStatus === 'Partially Paid'
                               ? 'bg-[#FEF3C7] text-[#B45309] border-[#FDE68A]'
+                              : inv.paymentStatus === 'Cancelled'
+                              ? 'bg-[#FEE2E2] text-[#DC2626] border-[#FECACA]'
                               : 'bg-[#FEE2E2] text-[#DC2626] border-[#FECACA]'
                           }`}
                         >
@@ -243,32 +249,48 @@ export const InvoicesView: React.FC = () => {
                       </td>
 
                       <td className="px-3.5 py-2.5 text-right space-x-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-                        {inv.balanceDue > 0 && (
+                        <button
+                          onClick={() => setSelectedInvoiceForModal(inv.id)}
+                          title="Print Official Invoice"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-[#A7D0C0] bg-[#E8F0EC] text-[11px] font-bold text-[#1B4D3E] hover:bg-[#1B4D3E] hover:text-white transition-colors cursor-pointer shadow-2xs active:scale-95"
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                          <span>Print</span>
+                        </button>
+
+                        {!isCancelled && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to cancel invoice #${inv.invoiceNumber}?\n\nThis will mark it as Cancelled and return all billed items back to inventory.`)) {
+                                cancelInvoice(inv.id, 'Cancelled from Invoices ledger');
+                              }
+                            }}
+                            title="Cancel and void invoice"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#FECACA] bg-[#FEF2F2] text-[11px] font-semibold text-[#DC2626] hover:bg-[#DC2626] hover:text-white transition-colors cursor-pointer shadow-2xs active:scale-95"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            <span>Cancel</span>
+                          </button>
+                        )}
+
+                        {inv.balanceDue > 0 && !isCancelled && (
                           <button
                             onClick={e => openPaymentModal(inv, e)}
                             title="Collect Payment"
-                            className="p-1 rounded border border-[#DCDDD9] bg-white text-[#B45309] hover:bg-[#FEF3C7]"
+                            className="p-1 rounded border border-[#DCDDD9] bg-white text-[#B45309] hover:bg-[#FEF3C7] transition-colors"
                           >
                             <DollarSign className="h-3.5 w-3.5" />
                           </button>
                         )}
 
                         <button
-                          onClick={() => setSelectedInvoiceForModal(inv.id)}
-                          title="Print / View Invoice"
-                          className="p-1 rounded border border-[#DCDDD9] bg-white text-[#1B4D3E] hover:bg-[#E8F0EC]"
-                        >
-                          <Printer className="h-3.5 w-3.5" />
-                        </button>
-
-                        <button
                           onClick={() => {
-                            if (confirm(`Delete invoice ${inv.invoiceNumber}?`)) {
+                            if (confirm(`Permanently delete invoice record ${inv.invoiceNumber}?`)) {
                               deleteInvoice(inv.id);
                             }
                           }}
-                          title="Delete Invoice"
-                          className="p-1 rounded border border-[#DCDDD9] bg-white text-[#6B706D] hover:text-[#DC2626] hover:bg-[#FEE2E2]"
+                          title="Delete Invoice Record"
+                          className="p-1 rounded border border-[#DCDDD9] bg-white text-[#6B706D] hover:text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -299,21 +321,21 @@ export const InvoicesView: React.FC = () => {
               <div className="bg-[#F5F5F3] p-2.5 rounded text-xs space-y-1 font-mono">
                 <div className="flex justify-between">
                   <span>Grand Total:</span>
-                  <span className="font-bold">{formatPKR(paymentInvoice.grandTotal)}</span>
+                  <span className="font-bold">{formatAED(paymentInvoice.grandTotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Already Paid:</span>
-                  <span className="text-[#15803D]">{formatPKR(paymentInvoice.paidAmount)}</span>
+                  <span className="text-[#15803D]">{formatAED(paymentInvoice.paidAmount)}</span>
                 </div>
                 <div className="flex justify-between border-t border-[#DCDDD9] pt-1">
                   <span>Remaining Due:</span>
-                  <span className="font-bold text-[#DC2626]">{formatPKR(paymentInvoice.balanceDue)}</span>
+                  <span className="font-bold text-[#DC2626]">{formatAED(paymentInvoice.balanceDue)}</span>
                 </div>
               </div>
 
               <div>
                 <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">
-                  Payment Amount to Collect (PKR) *
+                  Payment Amount to Collect (AED) *
                 </label>
                 <input
                   type="number"
@@ -333,10 +355,10 @@ export const InvoicesView: React.FC = () => {
                   onChange={e => setPayMethod(e.target.value as PaymentMethod)}
                   className="w-full rounded border border-[#DCDDD9] px-2.5 py-1.5 focus:border-[#1B4D3E] focus:outline-none"
                 >
-                  <option value="Cash">Cash</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
-                  <option value="JazzCash / EasyPaisa">JazzCash / EasyPaisa</option>
-                  <option value="Card">Card</option>
+                  <option value="Cash">Cash (AED)</option>
+                  <option value="Card">Credit / Debit Card (Visa / Mastercard)</option>
+                  <option value="Bank Transfer">Bank Wire / IBAN Transfer</option>
+                  <option value="Other">Corporate Cheque</option>
                 </select>
               </div>
 

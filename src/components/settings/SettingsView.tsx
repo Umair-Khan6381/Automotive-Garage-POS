@@ -37,6 +37,16 @@ export const SettingsView: React.FC = () => {
   const [defaultOilChangeMonths, setDefaultOilChangeMonths] = useState(settings.defaultOilChangeMonths);
   const [defaultOilChangeKm, setDefaultOilChangeKm] = useState(settings.defaultOilChangeKm);
 
+  // Dubai Regulatory Settings
+  const [trnNumber, setTrnNumber] = useState(settings.trnNumber || '100482937400003');
+  const [dedLicenseNumber, setDedLicenseNumber] = useState(settings.dedLicenseNumber || 'CN-1094829');
+  const [rtaPermitNumber, setRtaPermitNumber] = useState(settings.rtaPermitNumber || 'RTA-VTS-2026-401');
+  const [dmEnvironmentalPermit, setDmEnvironmentalPermit] = useState(settings.dmEnvironmentalPermit || 'DM-EHS-WST-8821');
+  const [storageGraceHours, setStorageGraceHours] = useState(settings.storageGraceHours || 72);
+  const [dailyStorageFeeAED, setDailyStorageFeeAED] = useState(settings.dailyStorageFeeAED || 50);
+  const [workmanshipWarrantyDays, setWorkmanshipWarrantyDays] = useState(settings.workmanshipWarrantyDays || 90);
+  const [workmanshipWarrantyKm, setWorkmanshipWarrantyKm] = useState(settings.workmanshipWarrantyKm || 5000);
+
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const handleSaveSettings = (e: React.FormEvent) => {
@@ -55,7 +65,15 @@ export const SettingsView: React.FC = () => {
       lowStockThreshold: Number(lowStockThreshold),
       allowNegativeStock,
       defaultOilChangeMonths: Number(defaultOilChangeMonths),
-      defaultOilChangeKm: Number(defaultOilChangeKm)
+      defaultOilChangeKm: Number(defaultOilChangeKm),
+      trnNumber,
+      dedLicenseNumber,
+      rtaPermitNumber,
+      dmEnvironmentalPermit,
+      storageGraceHours: Number(storageGraceHours),
+      dailyStorageFeeAED: Number(dailyStorageFeeAED),
+      workmanshipWarrantyDays: Number(workmanshipWarrantyDays),
+      workmanshipWarrantyKm: Number(workmanshipWarrantyKm)
     });
 
     setSavedSuccess(true);
@@ -157,11 +175,12 @@ export const SettingsView: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">NTN / STRN Tax Number</label>
+              <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">UAE TRN (Tax Registration Number)</label>
               <input
                 type="text"
                 value={taxNumber}
                 onChange={e => setTaxNumber(e.target.value)}
+                placeholder="100482937400003"
                 className="w-full rounded border border-[#DCDDD9] px-2.5 py-1.5 font-mono focus:border-[#1B4D3E] focus:outline-none"
               />
             </div>
@@ -178,7 +197,102 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Section 2: Billing & Stock Defaults */}
+        {/* Section 2: Dubai Regulatory Licenses & Statutory Policies */}
+        <div className="rounded border border-[#DCDDD9] bg-white p-4 space-y-3">
+          <div className="flex items-center justify-between border-b border-[#DCDDD9] pb-2">
+            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-[#202321]">
+              <ShieldCheck className="h-4 w-4 text-[#1B4D3E]" />
+              <span>Dubai Regulatory Compliance & Statutory Licenses (تراخيص دبي الرسمية)</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveView('dubai_policies')}
+              className="text-xs text-[#1B4D3E] hover:underline font-semibold flex items-center gap-1"
+            >
+              <span>View Dubai Policies</span>
+              <ArrowRight className="h-3 w-3" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">
+                Dubai Economy & Tourism (DET / DED) Trade License #
+              </label>
+              <input
+                type="text"
+                value={dedLicenseNumber}
+                onChange={e => setDedLicenseNumber(e.target.value)}
+                placeholder="CN-1094829"
+                className="w-full rounded border border-[#DCDDD9] px-2.5 py-1.5 font-mono focus:border-[#1B4D3E] focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">
+                RTA Technical Workshop Classification / Permit #
+              </label>
+              <input
+                type="text"
+                value={rtaPermitNumber}
+                onChange={e => setRtaPermitNumber(e.target.value)}
+                placeholder="RTA-VTS-2026-401"
+                className="w-full rounded border border-[#DCDDD9] px-2.5 py-1.5 font-mono focus:border-[#1B4D3E] focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">
+                Dubai Municipality EHS Hazardous Waste Disposal Ref
+              </label>
+              <input
+                type="text"
+                value={dmEnvironmentalPermit}
+                onChange={e => setDmEnvironmentalPermit(e.target.value)}
+                placeholder="DM-EHS-WST-8821"
+                className="w-full rounded border border-[#DCDDD9] px-2.5 py-1.5 font-mono focus:border-[#1B4D3E] focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">
+                Vehicle Daily Storage Fee (AED / Day after 72h Grace)
+              </label>
+              <input
+                type="number"
+                value={dailyStorageFeeAED}
+                onChange={e => setDailyStorageFeeAED(Number(e.target.value))}
+                className="w-full rounded border border-[#DCDDD9] px-2.5 py-1.5 font-mono focus:border-[#1B4D3E] focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">
+                Standard Workmanship Warranty (Days) - Law 15/2020
+              </label>
+              <input
+                type="number"
+                value={workmanshipWarrantyDays}
+                onChange={e => setWorkmanshipWarrantyDays(Number(e.target.value))}
+                className="w-full rounded border border-[#DCDDD9] px-2.5 py-1.5 font-mono focus:border-[#1B4D3E] focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">
+                Standard Workmanship Warranty (Kilometers)
+              </label>
+              <input
+                type="number"
+                value={workmanshipWarrantyKm}
+                onChange={e => setWorkmanshipWarrantyKm(Number(e.target.value))}
+                className="w-full rounded border border-[#DCDDD9] px-2.5 py-1.5 font-mono focus:border-[#1B4D3E] focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Billing & Stock Defaults */}
         <div className="rounded border border-[#DCDDD9] bg-white p-4 space-y-3">
           <div className="flex items-center gap-2 border-b border-[#DCDDD9] pb-2 font-bold text-xs uppercase tracking-wider text-[#202321]">
             <FileText className="h-4 w-4 text-[#1B4D3E]" />
@@ -197,7 +311,7 @@ export const SettingsView: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">Default GST / Tax Rate (%)</label>
+              <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">Default UAE VAT Rate (%) (FTA 5%)</label>
               <input
                 type="number"
                 value={defaultTaxRate}
@@ -227,7 +341,7 @@ export const SettingsView: React.FC = () => {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">Bill Footer Terms / Warranty</label>
+              <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">Dubai Tax Invoice Terms & Legal Warranty Notice</label>
               <input
                 type="text"
                 value={invoiceFooterNote}
@@ -242,10 +356,54 @@ export const SettingsView: React.FC = () => {
         <div className="rounded border border-[#DCDDD9] bg-white p-4">
           <div className="flex items-center gap-2 border-b border-[#DCDDD9] pb-2 mb-3">
             <Type className="h-4 w-4 text-[#1B4D3E]" />
-            <h2 className="text-sm font-bold text-[#202321]">Typography & Application Font Specification</h2>
+            <h2 className="text-sm font-bold text-[#202321]">Display Typography & Global Font Size (فونٹ سائز)</h2>
           </div>
 
           <div className="space-y-4">
+            {/* Global Scale Controller */}
+            <div>
+              <label className="text-xs font-bold text-[#202321] block mb-1.5">
+                Application Text Size & Zoom Level (سکرین فونٹ سائز منتخب کریں)
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                {[
+                  { label: '80% (Mini)', scale: '0.8', desc: 'Compact (80%)' },
+                  { label: '90% (Small)', scale: '0.9', desc: 'Compact (90%)' },
+                  { label: '100% (Normal)', scale: '1.0', desc: 'Standard (100%)' },
+                  { label: '110% (Default)', scale: '1.1', desc: 'Comfortable (110%)' },
+                  { label: '120% (Extra)', scale: '1.2', desc: 'Big & Clear (120%)' },
+                  { label: '135% (Jumbo)', scale: '1.35', desc: 'Ultra (135%)' }
+                ].map(opt => {
+                  const currentScale = localStorage.getItem('garage_pos_font_scale') || '1.1';
+                  const isSelected = currentScale === opt.scale;
+
+                  return (
+                    <button
+                      key={opt.scale}
+                      type="button"
+                      onClick={() => {
+                        localStorage.setItem('garage_pos_font_scale', opt.scale);
+                        document.documentElement.style.setProperty('--app-font-scale', opt.scale);
+                        setSavedSuccess(true);
+                        setTimeout(() => setSavedSuccess(false), 2000);
+                      }}
+                      className={`p-2.5 rounded border text-left transition-all ${
+                        isSelected
+                          ? 'border-[#1B4D3E] bg-[#E8F0EC] text-[#1B4D3E] font-bold shadow-xs'
+                          : 'border-[#DCDDD9] bg-white text-[#202321] hover:bg-[#F5F5F3]'
+                      }`}
+                    >
+                      <div className="text-xs font-bold">{opt.label}</div>
+                      <div className="text-[11px] opacity-75 mt-0.5">{opt.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-[#6B706D] mt-2">
+                Immediate responsive scaling: Adjusts text and layout scaling across all desktop, laptop, tablet, and mobile views. The 80% option provides high information density for compact and split screens.
+              </p>
+            </div>
+
             <div>
               <label className="text-xs font-semibold text-[#202321] block mb-1">
                 Active Application Font Style
@@ -259,9 +417,6 @@ export const SettingsView: React.FC = () => {
                   Active Globally
                 </span>
               </div>
-              <p className="text-xs text-[#6B706D] mt-2">
-                Applied globally across all floor terminals, counter POS desks, work orders, invoices, and analytics tables.
-              </p>
             </div>
 
             {/* Typography Hierarchy Reference Table */}

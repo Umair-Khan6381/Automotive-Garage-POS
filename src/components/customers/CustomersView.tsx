@@ -77,7 +77,7 @@ export const CustomersView: React.FC = () => {
         fullName: name,
         phone,
         email: email || `${name.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
-        address: address || 'Pakistan',
+        address: address || 'Dubai, UAE',
         notes
       });
     }
@@ -370,7 +370,7 @@ export const CustomersView: React.FC = () => {
                 <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">Workshop Address / City</label>
                 <input
                   type="text"
-                  placeholder="e.g. Model Town, Lahore"
+                  placeholder="e.g. Al Barsha 2, Dubai, UAE"
                   value={address}
                   onChange={e => setAddress(e.target.value)}
                   className="w-full rounded border border-[#DCDDD9] px-2.5 py-1.5 focus:border-[#1B4D3E] focus:outline-none"

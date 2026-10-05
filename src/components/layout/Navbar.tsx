@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Menu,
   Search,
@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   Settings as SettingsIcon,
   Shield,
-  UserCheck
+  UserCheck,
+  Type
 } from 'lucide-react';
 import { useShop, AppView } from '../../context/ShopContext';
 import { evaluateServiceDueStatus } from '../../utils/calculations';
@@ -37,6 +38,21 @@ export const Navbar: React.FC = () => {
 
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showFontMenu, setShowFontMenu] = useState(false);
+  const [currentFontScale, setCurrentFontScale] = useState<string>(() => {
+    return localStorage.getItem('garage_pos_font_scale') || '1.1';
+  });
+
+  const handleSetFontScale = (scale: string) => {
+    setCurrentFontScale(scale);
+    localStorage.setItem('garage_pos_font_scale', scale);
+    document.documentElement.style.setProperty('--app-font-scale', scale);
+    setShowFontMenu(false);
+  };
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--app-font-scale', currentFontScale);
+  }, [currentFontScale]);
 
   // Compute operational alerts count
   const lowStockCount = products.filter(p => p.currentQuantity <= p.minStockLevel).length;
@@ -71,7 +87,8 @@ export const Navbar: React.FC = () => {
     users: { section: 'System', title: 'Users & Access Control' },
     settings: { section: 'System', title: 'Workshop Configuration' },
     backup: { section: 'System', title: 'Backup & Disaster Recovery' },
-    audit_logs: { section: 'System', title: 'Audit Logs & Traceability' }
+    audit_logs: { section: 'System', title: 'Audit Logs & Traceability' },
+    dubai_policies: { section: 'Dubai Compliance', title: 'Dubai Workshop Policies & RTA Standards' }
   };
 
   const currentMeta = viewTitles[activeView] || { section: 'Workshop', title: 'Management' };
@@ -79,12 +96,12 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-[#DCDDD9] bg-white px-4 lg:px-6">
+      <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-[#DCDDD9] bg-white px-2.5 sm:px-4 lg:px-6">
         {/* Zone 1: Mobile Hamburger + Brand + Breadcrumb */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 sm:flex-initial pr-2">
           <button
             onClick={() => setMobileSidebarOpen(true)}
-            className="rounded p-1.5 text-[#6B706D] hover:bg-[#F5F5F3] hover:text-[#202321] lg:hidden focus-visible:outline-none"
+            className="rounded p-1.5 text-[#6B706D] hover:bg-[#F5F5F3] hover:text-[#202321] lg:hidden focus-visible:outline-none shrink-0"
             aria-label="Open navigation menu"
           >
             <Menu className="h-5 w-5" />
@@ -92,17 +109,17 @@ export const Navbar: React.FC = () => {
 
           <button
             onClick={() => setActiveView('dashboard')}
-            className="text-left flex items-center gap-2 group focus:outline-none"
+            className="text-left flex items-center gap-2 group focus:outline-none min-w-0"
           >
-            <div className="flex h-7 w-7 items-center justify-center rounded bg-[#1B4D3E] text-white">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-[#1B4D3E] text-white">
               <Wrench className="h-3.5 w-3.5" />
             </div>
-            <span className="text-sm font-bold tracking-tight text-[#202321]">
+            <span className="text-sm sm:text-base font-bold tracking-tight text-[#202321] truncate whitespace-nowrap">
               {settings.garageName || settings.shopName || 'Umair Auto Care'}
             </span>
           </button>
 
-          <div className="hidden sm:flex items-center gap-1.5 ml-3 pl-3 border-l border-[#DCDDD9] text-xs text-[#6B706D]">
+          <div className="hidden sm:flex items-center gap-1.5 ml-3 pl-3 border-l border-[#DCDDD9] text-xs text-[#6B706D] shrink-0">
             <span>{currentMeta.section}</span>
             <span className="text-[#DCDDD9]">/</span>
             <span className="font-semibold text-[#202321]">{currentMeta.title}</span>
@@ -126,39 +143,90 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Zone 3: Quick Desk Actions + Profile Menu */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           {/* Mobile Search button */}
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="rounded p-1.5 text-[#6B706D] hover:bg-[#F5F5F3] hover:text-[#202321] md:hidden"
+            className="rounded p-1.5 text-[#6B706D] hover:bg-[#F5F5F3] hover:text-[#202321] md:hidden shrink-0"
             title="Search"
             aria-label="Search"
           >
             <Search className="h-4 w-4" />
           </button>
 
-          {/* Quick POS Button */}
+          {/* Quick POS Button (Visible on sm+ screens, handled on mobile by BottomNav) */}
           <button
             onClick={() => setActiveView('pos')}
-            className="inline-flex items-center gap-1.5 rounded bg-[#1B4D3E] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#153E32] transition-colors shadow-xs"
+            className="hidden sm:inline-flex items-center gap-1.5 rounded bg-[#1B4D3E] px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#153E32] transition-colors shadow-xs shrink-0"
           >
             <ShoppingCart className="h-3.5 w-3.5" />
-            <span>Counter POS</span>
+            <span className="hidden md:inline">Counter POS</span>
+            <span className="md:hidden">POS</span>
           </button>
 
-          {/* Quick New Job Button */}
+          {/* Quick New Job Button (Visible on md+ screens) */}
           <button
             onClick={() => setActiveView('jobs')}
-            className="inline-flex items-center gap-1.5 rounded border border-[#DCDDD9] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#202321] hover:bg-[#F5F5F3] transition-colors"
+            className="hidden md:inline-flex items-center gap-1.5 rounded border border-[#DCDDD9] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#202321] hover:bg-[#F5F5F3] transition-colors shrink-0"
           >
             <Plus className="h-3.5 w-3.5 text-[#6B706D]" />
-            <span className="hidden xs:inline">New Job</span>
+            <span>New Job</span>
           </button>
+
+          {/* Display Font Size Controller (T-Size) */}
+          <div className="relative hidden sm:block shrink-0">
+            <button
+              onClick={() => setShowFontMenu(!showFontMenu)}
+              className="inline-flex items-center gap-1 rounded border border-[#DCDDD9] bg-white px-2 py-1 text-xs font-semibold text-[#202321] hover:border-[#1B4D3E] hover:bg-[#F5F5F3] transition-colors shadow-2xs"
+              title="Display Font Size (T-Size) / فونٹ سائز تبدیل کریں"
+              aria-label="Adjust font size"
+            >
+              <Type className="h-3.5 w-3.5 text-[#1B4D3E]" />
+              <span className="font-extrabold text-[12px] text-[#1B4D3E]">T</span>
+              <span className="text-[10px] text-[#1B4D3E] font-bold font-mono bg-[#E8F0EC] px-1 py-0.5 rounded">
+                {currentFontScale === '0.8' ? '80%' : currentFontScale === '0.9' ? '90%' : currentFontScale === '1.0' ? '100%' : currentFontScale === '1.1' ? '110%' : currentFontScale === '1.2' ? '120%' : '135%'}
+              </span>
+              <ChevronDown className="h-3 w-3 text-[#6B706D]" />
+            </button>
+
+            {showFontMenu && (
+              <div
+                className="absolute right-0 mt-1 w-56 rounded border border-[#DCDDD9] bg-white p-1.5 shadow-xl z-50 text-xs"
+                onMouseLeave={() => setShowFontMenu(false)}
+              >
+                <div className="px-2 py-1 text-[10px] font-bold text-[#6B706D] uppercase tracking-wider border-b border-[#DCDDD9] mb-1 flex items-center justify-between">
+                  <span>T-Size (فونٹ سائز)</span>
+                  <span className="text-[#1B4D3E] font-mono">Zoom</span>
+                </div>
+                {[
+                  { label: '80% (Compact / Mini)', scale: '0.8', pct: '80%' },
+                  { label: '90% (Small / Compact)', scale: '0.9', pct: '90%' },
+                  { label: '100% (Standard / Normal)', scale: '1.0', pct: '100%' },
+                  { label: '110% (Large - Default)', scale: '1.1', pct: '110%' },
+                  { label: '120% (Extra Large)', scale: '1.2', pct: '120%' },
+                  { label: '135% (Maximum / Jumbo)', scale: '1.35', pct: '135%' }
+                ].map(opt => (
+                  <button
+                    key={opt.scale}
+                    onClick={() => handleSetFontScale(opt.scale)}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded text-left transition-colors ${
+                      currentFontScale === opt.scale
+                        ? 'bg-[#E8F0EC] text-[#1B4D3E] font-bold'
+                        : 'text-[#202321] hover:bg-[#F5F5F3]'
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    <span className="font-mono text-[11px] font-semibold opacity-80">{opt.pct}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Notification Bell */}
           <button
             onClick={() => setIsNotificationsOpen(true)}
-            className="relative rounded p-1.5 text-[#6B706D] hover:bg-[#F5F5F3] hover:text-[#202321]"
+            className="relative rounded p-1.5 text-[#6B706D] hover:bg-[#F5F5F3] hover:text-[#202321] shrink-0"
             aria-label="Notifications"
           >
             <Bell className="h-4 w-4" />
@@ -170,12 +238,12 @@ export const Navbar: React.FC = () => {
           </button>
 
           {/* Profile & Security Menu */}
-          <div className="relative ml-1">
+          <div className="relative shrink-0">
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="flex items-center gap-2 rounded border border-[#DCDDD9] bg-white px-2 py-1 hover:border-[#6B706D] transition-colors text-left"
+              className="flex items-center gap-1.5 rounded border border-[#DCDDD9] bg-white p-1 sm:px-2 sm:py-1 hover:border-[#6B706D] transition-colors text-left"
             >
-              <div className="flex h-5 w-5 items-center justify-center rounded bg-[#1B4D3E] text-[11px] font-bold text-white">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#1B4D3E] text-xs font-bold text-white">
                 {userInitials}
               </div>
               <div className="hidden lg:block text-left text-xs leading-none">
@@ -186,7 +254,7 @@ export const Navbar: React.FC = () => {
                   ({currentUser?.role === 'admin' ? 'Owner' : currentUser?.role})
                 </span>
               </div>
-              <ChevronDown className="h-3 w-3 text-[#6B706D]" />
+              <ChevronDown className="h-3 w-3 text-[#6B706D] hidden sm:block" />
             </button>
 
             {/* Profile Dropdown */}

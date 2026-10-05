@@ -29,6 +29,55 @@ export interface AuthSession {
   loginTime: string;
 }
 
+export interface UserSessionRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  userRole: UserRole;
+  loginTimestamp: string;
+  logoutTimestamp?: string;
+  status: 'Active' | 'Logged Out' | 'Terminated';
+  deviceInfo: string;
+}
+
+export interface PaymentProof {
+  id: string;
+  fileName: string;
+  fileType: string; // 'image/jpeg' | 'image/png' | 'application/pdf'
+  fileSize: number; // in bytes
+  dataUrl: string; // Base64 data URL
+  uploadedBy: string; // User ID
+  uploadedByName: string; // User display name
+  uploadedAt: string; // ISO string
+  notes?: string;
+}
+
+export interface InvoicePrintEvent {
+  id: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  printedBy: string; // User ID
+  printedByName: string; // User Name
+  printTimestamp: string;
+  printCount: number;
+}
+
+export interface RecordChangeEntry {
+  id: string;
+  recordType: 'Customer' | 'Vehicle' | 'Product' | 'Purchase' | 'Job' | 'Invoice' | 'Payment' | 'Expense' | 'Labour' | 'LabourPayment';
+  recordId: string;
+  recordReference: string; // e.g. "INV-2026-012"
+  timestamp: string;
+  userId: string;
+  userName: string;
+  userRole: UserRole;
+  action: 'Created' | 'Edited' | 'Printed' | 'Payment Recorded' | 'Status Changed' | 'Voided';
+  fieldChanged?: string;
+  oldValue?: string;
+  newValue?: string;
+  description: string;
+}
+
 export interface SetupFormData {
   fullName: string;
   garageName: string;
@@ -47,6 +96,12 @@ export interface Customer {
   address: string;
   notes?: string;
   createdDate: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  updatedAt?: string;
 }
 
 export interface Vehicle {
@@ -62,6 +117,12 @@ export interface Vehicle {
   customerId: string;
   notes?: string;
   createdDate: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  updatedAt?: string;
 }
 
 export type ProductCategory =
@@ -69,13 +130,17 @@ export type ProductCategory =
   | 'Oil Filters'
   | 'Air & Cabin Filters'
   | 'Brake System'
+  | 'Braking System'
   | 'Suspension & Steering'
   | 'Spark Plugs & Ignition'
   | 'Batteries & Electrical'
+  | 'Ignition & Electrical'
   | 'Coolant & Fluids'
+  | 'Cooling System'
   | 'Belts & Hoses'
   | 'Tires & Wheels'
   | 'Transmission'
+  | 'AC & Climate'
   | 'Shop Supplies';
 
 export interface Product {
@@ -92,6 +157,12 @@ export interface Product {
   unit: string;              // 'Liters', 'Pieces', 'Sets', 'Bottles'
   location: string;          // 'Rack A-01', 'Shelf B-3'
   createdDate: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  updatedAt?: string;
 }
 
 export type InventoryTransactionType =
@@ -113,6 +184,8 @@ export interface InventoryTransaction {
   reference: string;         // e.g. "PO-1002", "INV-2026-004", "JC-2026-084"
   date: string;
   user: string;
+  userId?: string;
+  timestamp?: string;
   notes?: string;
 }
 
@@ -134,21 +207,37 @@ export interface Purchase {
   notes?: string;
   createdDate: string;
   createdBy: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  updatedAt?: string;
 }
 
 export type LabourStatus = 'active' | 'inactive' | 'on_leave';
-export type LabourRateType = 'daily' | 'hourly' | 'fixed';
+export type LabourRateType = 'daily' | 'hourly' | 'fixed' | 'commission';
 
 export interface LabourWorker {
   id: string;
+  workerCode?: string;       // e.g. "WRK-001"
   name: string;
   phone: string;
   role: string;              // e.g. 'Master Mechanic', 'Auto Electrician', 'AC Technician', 'Apprentice'
-  dailyRate: number;         // e.g. Rs. 2,500
-  hourlyRate: number;        // e.g. Rs. 350
+  rateType?: LabourRateType; // 'daily' | 'hourly' | 'fixed' | 'commission'
+  commissionPercentage?: number; // Custom percentage defined by user (e.g. 40 for 40%)
+  dailyRate: number;         // e.g. AED 250.00
+  hourlyRate: number;        // e.g. AED 35.00
+  weeklyRate?: number;       // e.g. AED 1,500.00
+  monthlySalary?: number;    // e.g. AED 6,500.00
   status: LabourStatus;
   joiningDate: string;
   notes?: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  updatedAt?: string;
 }
 
 export interface LabourAssignment {
@@ -156,9 +245,10 @@ export interface LabourAssignment {
   labourId: string;
   labourName: string;
   rateType: LabourRateType;
-  rate: number;              // Rate charged by or for the worker
-  units: number;             // Days, Hours, or 1 for fixed
-  costToShop: number;        // What shop owes the worker
+  rate: number;              // Rate charged by or for the worker (or commission %)
+  commissionPercentage?: number; // Custom percentage share for this job (e.g. 40%)
+  units: number;             // Days, Hours, or 1 for fixed/commission
+  costToShop: number;        // What shop owes the worker (customerCharge * commissionPercentage / 100 for commission)
   customerCharge: number;    // What customer pays for this labour
   notes?: string;
 }
@@ -210,12 +300,22 @@ export interface JobCard {
   invoiceId?: string;
   photos?: string[];
   notes?: string;
+  isAccidentJob?: boolean;
+  dubaiPolicePermitNumber?: string;
+  customerRequestedOldPartsReturn?: boolean;
+  rtaPreInspectionPassed?: boolean;
   createdDate: string;
   updatedDate: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  updatedAt?: string;
 }
 
 export type PaymentMethod = 'Cash' | 'Bank Transfer' | 'Card' | 'Other';
-export type PaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid';
+export type PaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid' | 'Cancelled';
 
 export interface InvoiceItem {
   id: string;
@@ -256,10 +356,27 @@ export interface Invoice {
   paymentStatus: PaymentStatus;
   notes?: string;
   createdDate: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  updatedAt?: string;
+  printedBy?: string;
+  printedByName?: string;
+  printedAt?: string;
+  printCount?: number;
+  printHistory?: InvoicePrintEvent[];
+  isCancelled?: boolean;
+  cancelReason?: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancelledByName?: string;
 }
 
 export interface PaymentRecord {
   id: string;
+  receiptNumber?: string;    // e.g. "REC-00045"
   invoiceId: string;
   invoiceNumber: string;
   customerId: string;
@@ -269,19 +386,35 @@ export interface PaymentRecord {
   reference?: string;
   notes?: string;
   receivedBy: string;
+  recordedBy?: string;
+  recordedByName?: string;
+  recordedAt?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  updatedAt?: string;
+  proofAttachment?: PaymentProof;
 }
 
 export interface LabourPayment {
   id: string;
+  receiptNumber?: string;    // e.g. "LAB-PAY-0012"
   labourId: string;
   labourName: string;
   amount: number;
   date: string;
-  paymentPeriod: string;     // e.g. "Week 38, Sept 2026"
+  paymentPeriod: string;     // e.g. "01-Sep-2026 → 30-Sep-2026"
   paymentMethod: PaymentMethod;
   reference?: string;
   notes?: string;
   paidBy: string;
+  paidByName?: string;
+  paidAt?: string;
+  status?: 'Paid' | 'Partially Paid';
+  remainingPayableAfter?: number;
+  proofAttachment?: PaymentProof;
+  updatedBy?: string;
+  updatedByName?: string;
+  updatedAt?: string;
 }
 
 export interface VehicleServiceRecord {
@@ -369,10 +502,17 @@ export interface ShopExpense {
   status: ExpenseStatus;
   notes?: string;
   attachment?: string; // base64 or receipt URL/photo
+  proofAttachment?: PaymentProof;
   linkedEntityId?: string; // Links to rent ID, electricity bill ID, or license ID
   linkedEntityType?: 'rent' | 'electricity' | 'license';
   createdDate: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
   updatedDate?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  updatedAt?: string;
   voidReason?: string;
 }
 
@@ -453,6 +593,7 @@ export interface ShopSettings {
   garageOwnerName?: string;
   garagePhone?: string;
   garageEmail?: string;
+  timezone?: string;           // Configured local timezone, e.g. 'Asia/Dubai'
   privateMode: boolean;        // Strict Private Garage Mode (Default: true)
   setupCompleted: boolean;     // First-time owner setup status
   tagline: string;
@@ -468,4 +609,13 @@ export interface ShopSettings {
   defaultOilChangeKm: number;
   allowNegativeStock: boolean;
   lowStockThreshold: number;
+  trnNumber?: string;
+  dedLicenseNumber?: string;
+  rtaPermitNumber?: string;
+  dmEnvironmentalPermit?: string;
+  storageGraceHours?: number;
+  dailyStorageFeeAED?: number;
+  workmanshipWarrantyDays?: number;
+  workmanshipWarrantyKm?: number;
+  enforcePolicePermitForAccidents?: boolean;
 }

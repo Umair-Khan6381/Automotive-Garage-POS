@@ -276,8 +276,8 @@ export const LandingPage: React.FC = () => {
               <div className="text-[11px] text-[#6B706D] mt-0.5 font-medium">Automatic Reconciliation</div>
             </div>
             <div className="border border-[#DCDDD9] p-3 rounded bg-[#FAFAF9]">
-              <div className="font-mono text-xl font-bold text-[#202321]">PKR (Rs.)</div>
-              <div className="text-[11px] text-[#6B706D] mt-0.5 font-medium">Decimal-Safe Currency</div>
+              <div className="font-mono text-xl font-bold text-[#202321]">AED (د.إ)</div>
+              <div className="text-[11px] text-[#6B706D] mt-0.5 font-medium">UAE Dirham Currency</div>
             </div>
             <div className="border border-[#DCDDD9] p-3 rounded bg-[#FAFAF9]">
               <div className="font-mono text-xl font-bold text-[#202321]">&lt; 200ms</div>

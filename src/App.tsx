@@ -28,6 +28,7 @@ import { ReportsView } from './components/reports/ReportsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { BackupRestoreView } from './components/backup/BackupRestoreView';
 import { AuditLogsView } from './components/audit/AuditLogsView';
+import { DubaiPoliciesView } from './components/policies/DubaiPoliciesView';
 import { BottomNav } from './components/layout/BottomNav';
 import { GlobalSearchModal } from './components/common/GlobalSearchModal';
 import { NotificationDrawer } from './components/common/NotificationDrawer';
@@ -103,6 +104,8 @@ const WorkshopAppContent: React.FC = () => {
         return <BackupRestoreView />;
       case 'audit_logs':
         return <AuditLogsView />;
+      case 'dubai_policies':
+        return <DubaiPoliciesView />;
       default:
         return <DashboardView />;
     }

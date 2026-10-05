@@ -3,11 +3,11 @@ import { ServiceDueStatus } from '../types';
 /**
  * Calculates weighted average cost when adding new inventory purchase
  * Example:
- * Current: 100 units @ Rs. 2,000 = Rs. 200,000
- * New: 50 units @ Rs. 2,200 = Rs. 110,000
+ * Current: 100 units @ AED 2,000.00 = AED 200,000.00
+ * New: 50 units @ AED 2,200.00 = AED 110,000.00
  * Total units: 150
- * Total value: Rs. 310,000
- * New weighted average: Rs. 310,000 / 150 = Rs. 2,066.67
+ * Total value: AED 310,000.00
+ * New weighted average: AED 310,000.00 / 150 = AED 2,066.67
  */
 export const calculateWeightedAverageCost = (
   currentQty: number,

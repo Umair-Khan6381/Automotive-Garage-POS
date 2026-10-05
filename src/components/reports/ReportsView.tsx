@@ -25,6 +25,7 @@ import {
   ProfitPeriodType,
   PeriodProfitRecord
 } from '../../utils/profitPeriodCalculations';
+import { printDocument } from '../../utils/printUtils';
 
 export const ReportsView: React.FC = () => {
   const { invoices, customers, products, labourWorkers, labourPayments, expenses, unifiedExpenses, jobCards, purchases } = useShop();
@@ -147,9 +148,9 @@ export const ReportsView: React.FC = () => {
 
   // Filtered view for P&L detailed statement
   const activeStatementData = useMemo(() => {
-    if (selectedMonthFilter === 'all') {
+    if (selectedPeriodFilter === 'all') {
       return {
-        label: 'All Months Combined (Grand Profit Period)',
+        label: `All Time Combined (${profitPeriod === 'weekly' ? 'All Weeks' : profitPeriod === 'yearly' ? 'All Years' : 'All Months'})`,
         invoices: invoices,
         expenses: paidExpensesList,
         partsRevenue: grandStats.partsRevenue,
@@ -163,21 +164,43 @@ export const ReportsView: React.FC = () => {
         servicesProfit: grandStats.servicesProfit,
         discount: grandStats.discount,
         totalRevenue: grandStats.totalRevenue,
-        grossProfit: grandStats.grossProfit,
+        totalCOGS: grandStats.totalCOGS,
+        foodAndTea: grandStats.foodAndTea,
+        conveyance: grandStats.conveyance,
+        workshopSupplies: grandStats.workshopSupplies,
+        rent: grandStats.rent,
+        electricity: grandStats.electricity,
+        licenses: grandStats.licenses,
+        otherFixed: grandStats.otherFixed,
+        dailyExpenses: grandStats.dailyExpenses,
+        fixedExpenses: grandStats.fixedExpenses,
         totalExpenses: grandStats.totalExpenses,
-        netProfit: grandStats.grandNetProfit
+        totalInvestment: grandStats.totalInvestment,
+        grossProfit: grandStats.grossProfit,
+        netProfit: grandStats.grandNetProfit,
+        marginPercent: grandStats.grandMargin,
+        roiPercent: grandStats.grandRoi
       };
     }
 
-    const currentMonth = monthlyProfitList.find(m => m.key === selectedMonthFilter);
-    const monthInvoices = invoices.filter(i => (i.date || i.createdDate || '').startsWith(selectedMonthFilter));
-    const monthExpenses = paidExpensesList.filter(e => (e.date || '').startsWith(selectedMonthFilter));
+    const currentPeriod = periodProfitList.find(p => p.key === selectedPeriodFilter);
+    const periodInvoices = invoices.filter(i => {
+      const d = (i.date || i.createdDate || '').slice(0, 10);
+      if (!currentPeriod) return false;
+      return d >= currentPeriod.startDate && d <= currentPeriod.endDate;
+    });
 
-    if (!currentMonth) {
+    const periodExpenses = paidExpensesList.filter(e => {
+      const d = (e.date || '').slice(0, 10);
+      if (!currentPeriod) return false;
+      return d >= currentPeriod.startDate && d <= currentPeriod.endDate;
+    });
+
+    if (!currentPeriod) {
       return {
-        label: formatMonthLabel(selectedMonthFilter),
-        invoices: monthInvoices,
-        expenses: monthExpenses,
+        label: 'Selected Period',
+        invoices: periodInvoices,
+        expenses: periodExpenses,
         partsRevenue: 0,
         partsCost: 0,
         partsProfit: 0,
@@ -196,25 +219,38 @@ export const ReportsView: React.FC = () => {
     }
 
     return {
-      label: currentMonth.label,
-      invoices: monthInvoices,
-      expenses: monthExpenses,
-      partsRevenue: currentMonth.partsRevenue,
-      partsCost: currentMonth.partsCost,
-      partsProfit: currentMonth.partsRevenue - currentMonth.partsCost,
-      labourRevenue: currentMonth.labourRevenue,
-      labourCost: currentMonth.labourCost,
-      labourProfit: currentMonth.labourRevenue - currentMonth.labourCost,
-      servicesRevenue: currentMonth.servicesRevenue,
-      servicesCost: currentMonth.servicesCost,
-      servicesProfit: currentMonth.servicesRevenue - currentMonth.servicesCost,
-      discount: currentMonth.discount,
-      totalRevenue: currentMonth.revenue,
-      grossProfit: currentMonth.grossProfit,
-      totalExpenses: currentMonth.expenses,
-      netProfit: currentMonth.netProfit
+      label: currentPeriod.label,
+      invoices: periodInvoices,
+      expenses: periodExpenses,
+      partsRevenue: currentPeriod.partsRevenue,
+      partsCost: currentPeriod.partsCost,
+      partsProfit: currentPeriod.partsRevenue - currentPeriod.partsCost,
+      labourRevenue: currentPeriod.labourRevenue,
+      labourCost: currentPeriod.labourCost,
+      labourProfit: currentPeriod.labourRevenue - currentPeriod.labourCost,
+      servicesRevenue: currentPeriod.servicesRevenue,
+      servicesCost: currentPeriod.servicesCost,
+      servicesProfit: currentPeriod.servicesRevenue - currentPeriod.servicesCost,
+      discount: currentPeriod.discount,
+      totalRevenue: currentPeriod.revenue,
+      totalCOGS: currentPeriod.cogs,
+      foodAndTea: currentPeriod.foodAndTeaExpenses,
+      conveyance: currentPeriod.conveyanceExpenses,
+      workshopSupplies: currentPeriod.workshopSuppliesExpenses,
+      rent: currentPeriod.rentExpenses,
+      electricity: currentPeriod.electricityExpenses,
+      licenses: currentPeriod.licenseExpenses,
+      otherFixed: currentPeriod.otherFixedExpenses,
+      dailyExpenses: currentPeriod.dailyExpensesTotal,
+      fixedExpenses: currentPeriod.fixedExpensesTotal,
+      totalExpenses: currentPeriod.totalOperatingExpenses,
+      totalInvestment: currentPeriod.totalInvestment,
+      grossProfit: currentPeriod.grossProfit,
+      netProfit: currentPeriod.netProfit,
+      marginPercent: currentPeriod.marginPercent,
+      roiPercent: currentPeriod.roiPercent
     };
-  }, [selectedMonthFilter, invoices, paidExpensesList, grandStats, monthlyProfitList]);
+  }, [selectedPeriodFilter, invoices, paidExpensesList, grandStats, periodProfitList, profitPeriod]);
 
   // Inventory Report stats
   const totalInventoryStock = products.reduce((acc, p) => acc + p.currentQuantity, 0);
@@ -255,13 +291,20 @@ export const ReportsView: React.FC = () => {
         </div>
 
         <button
-          onClick={() => window.print()}
-          className="inline-flex items-center gap-1.5 rounded border border-[#DCDDD9] bg-white px-3 py-1.5 text-xs font-semibold text-[#202321] hover:bg-[#F5F5F3] transition-colors shadow-xs"
+          onClick={() => {
+            printDocument({
+              title: `Garage_Financial_Statement_${new Date().toISOString().slice(0, 10)}`,
+              elementId: 'printable-reports-area'
+            });
+          }}
+          className="inline-flex items-center gap-1.5 rounded bg-[#1B4D3E] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#153E32] transition-colors shadow-xs"
         >
-          <Printer className="h-3.5 w-3.5 text-[#6B706D]" />
+          <Printer className="h-3.5 w-3.5" />
           <span>Print Financial Statement</span>
         </button>
       </div>
+
+      <div id="printable-reports-area" className="space-y-4 print-container">
 
       {/* Segmented Report Selector */}
       <div className="flex items-center gap-1 p-1 bg-white border border-[#DCDDD9] rounded text-xs w-fit shadow-xs">
@@ -308,72 +351,118 @@ export const ReportsView: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 1: TOTAL PROFIT (MONTHLY BREAKDOWN & GRAND PROFIT)                      */}
+      {/* TAB 1: TOTAL PROFIT (WEEKLY, MONTHLY, YEARLY BREAKDOWNS & INVESTMENT ROI)  */}
       {/* ========================================================================= */}
       {activeTab === 'profit' && (
         <div className="space-y-5">
-          {/* DEDICATED TOTAL PROFIT BOX REQUIRED BY USER */}
+          {/* DEDICATED TOTAL PROFIT & INVESTMENT ANALYSIS CONTAINER */}
           <div className="rounded border-2 border-[#1B4D3E] bg-white overflow-hidden shadow-xs">
             {/* Box Header */}
-            <div className="bg-[#1B4D3E] text-white px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="bg-[#1B4D3E] text-white px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded bg-white/10 text-white">
-                  <TrendingUp className="h-4 w-4" />
+                <div className="flex h-9 w-9 items-center justify-center rounded bg-white/10 text-white">
+                  <TrendingUp className="h-5 w-5" />
                 </div>
                 <div>
                   <h2 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
-                    Total Profit & Financial Performance
+                    Total Profit & Capital Investment Analysis
                     <span className="rounded bg-white/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
-                      مجموعی اور ماہانہ منافع
+                      ہفتہ وار، ماہانہ اور سالانہ منافع
                     </span>
                   </h2>
                   <p className="text-[11px] text-[#A7D0C0] mt-0.5">
-                    Monthly profit breakdown & cumulative Grand Profit across all operating months
+                    Real-time net profit derived from all sales minus parts cost, labour wages, daily tea/food, conveyance, and fixed rent & electricity overheads.
                   </p>
                 </div>
               </div>
 
-              {/* Quick Period Selector */}
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-white/80 font-medium">View Period:</span>
+              {/* Period Switcher (Weekly / Monthly / Yearly) & Filter */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex rounded bg-black/20 p-0.5 border border-white/20">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfitPeriod('weekly');
+                      setSelectedPeriodFilter('all');
+                    }}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded transition-colors ${
+                      profitPeriod === 'weekly'
+                        ? 'bg-white text-[#1B4D3E] shadow-xs'
+                        : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    ہفتہ وار (Weekly)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfitPeriod('monthly');
+                      setSelectedPeriodFilter('all');
+                    }}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded transition-colors ${
+                      profitPeriod === 'monthly'
+                        ? 'bg-white text-[#1B4D3E] shadow-xs'
+                        : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    ماہانہ (Monthly)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfitPeriod('yearly');
+                      setSelectedPeriodFilter('all');
+                    }}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded transition-colors ${
+                      profitPeriod === 'yearly'
+                        ? 'bg-white text-[#1B4D3E] shadow-xs'
+                        : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    سالانہ (Yearly)
+                  </button>
+                </div>
+
                 <select
-                  value={selectedMonthFilter}
-                  onChange={e => setSelectedMonthFilter(e.target.value)}
+                  value={selectedPeriodFilter}
+                  onChange={e => setSelectedPeriodFilter(e.target.value)}
                   className="rounded border border-white/30 bg-white/10 px-2.5 py-1 text-xs font-semibold text-white focus:outline-none focus:ring-1 focus:ring-white"
                 >
-                  <option value="all" className="text-[#202321] bg-white">All Months (Grand Overview)</option>
-                  {monthlyProfitList.map(m => (
-                    <option key={m.key} value={m.key} className="text-[#202321] bg-white">
-                      {m.label} ({m.invoiceCount} invoices)
+                  <option value="all" className="text-[#202321] bg-white">
+                    All Periods Combined (Grand Overview)
+                  </option>
+                  {periodProfitList.map(p => (
+                    <option key={p.key} value={p.key} className="text-[#202321] bg-white">
+                      {p.label} ({p.invoiceCount} invoices)
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            {/* GRAND PROFIT HERO SECTION */}
+            {/* CAPITAL INVESTMENT & GRAND PROFIT HERO SECTION */}
             <div className="bg-[#FAFAF9] border-b border-[#DCDDD9] p-4 sm:p-5">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#6B706D]">
-                    Grand Profit Summary (All Months / تمام مہینوں کا مجموعی منافع)
+                    Total Investment vs Revenue & Net Profit (کل سرمایہ کاری، لاگت اور منافع)
                   </span>
                   <span className="rounded bg-[#E8F0EC] px-2 py-0.5 text-[10px] font-bold text-[#1B4D3E]">
-                    {monthlyProfitList.length} Operating {monthlyProfitList.length === 1 ? 'Month' : 'Months'}
+                    {periodProfitList.length} {profitPeriod === 'weekly' ? 'Weeks' : profitPeriod === 'yearly' ? 'Years' : 'Months'}
                   </span>
                 </div>
                 <span className="text-[11px] text-[#6B706D]">
-                  Net Profit = Total Sales - Parts & Labour Cost - Overhead Expenses
+                  Net Profit = Revenue - Total Investment (Parts + Labour + Rent + Electricity + Daily Expenses)
                 </span>
               </div>
 
               {/* Metric Cards Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                {/* 1. Grand Profit (Primary Emphasis) */}
+                {/* 1. Grand Net Profit (Primary Focus) */}
                 <div className="col-span-2 sm:col-span-2 rounded border-2 border-[#15803D] bg-[#F0FDF4] p-3.5 flex flex-col justify-between">
                   <div className="flex items-center justify-between text-[#15803D]">
                     <span className="text-xs font-bold uppercase tracking-wide">
-                      Grand Profit (All Months)
+                      Grand Net Profit (خالص منافع)
                     </span>
                     <TrendingUp className="h-4 w-4" />
                   </div>
@@ -383,15 +472,15 @@ export const ReportsView: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-[#15803D]/90 pt-1 border-t border-[#BBF7D0]">
-                    <span>Cumulative Net Gain</span>
-                    <span className="font-semibold font-mono">{grandStats.grandMargin.toFixed(1)}% Net Margin</span>
+                    <span>Return on Capital (ROI):</span>
+                    <span className="font-semibold font-mono">{grandStats.grandRoi.toFixed(1)}% ROI ({grandStats.grandMargin.toFixed(1)}% Margin)</span>
                   </div>
                 </div>
 
-                {/* 2. Grand Revenue */}
+                {/* 2. Total Invoiced Sales / Revenue */}
                 <div className="rounded border border-[#DCDDD9] bg-white p-3 flex flex-col justify-between">
                   <span className="text-[11px] font-semibold text-[#6B706D] uppercase tracking-wider">
-                    Total Invoiced Sales
+                    Total Revenue (آمدنی)
                   </span>
                   <div className="my-1">
                     <span className="text-lg font-bold font-mono text-[#202321]">
@@ -399,29 +488,29 @@ export const ReportsView: React.FC = () => {
                     </span>
                   </div>
                   <span className="text-[10px] text-[#6B706D]">
-                    {grandStats.totalInvoices} Invoices billed
+                    {grandStats.totalInvoices} Invoices Settled
                   </span>
                 </div>
 
-                {/* 3. Cost of Goods & Labour */}
+                {/* 3. Total Investment / Cash Outflow */}
                 <div className="rounded border border-[#DCDDD9] bg-white p-3 flex flex-col justify-between">
                   <span className="text-[11px] font-semibold text-[#6B706D] uppercase tracking-wider">
-                    Parts & Labour Cost
+                    Total Invested / Cost (سرمایہ)
                   </span>
                   <div className="my-1">
                     <span className="text-lg font-bold font-mono text-[#6B706D]">
-                      {formatPKR(grandStats.totalCOGS)}
+                      {formatPKR(grandStats.totalInvestment)}
                     </span>
                   </div>
                   <span className="text-[10px] text-[#6B706D]">
-                    Acquisition & technician wages
+                    Parts, Labour, Rent & Expenses
                   </span>
                 </div>
 
-                {/* 4. Overhead Expenses */}
+                {/* 4. Total Operating Expenses (Daily + Fixed) */}
                 <div className="rounded border border-[#DCDDD9] bg-white p-3 flex flex-col justify-between">
                   <span className="text-[11px] font-semibold text-[#6B706D] uppercase tracking-wider">
-                    Shop Expenses
+                    Operating Expenses (اخراجات)
                   </span>
                   <div className="my-1">
                     <span className="text-lg font-bold font-mono text-[#DC2626]">
@@ -429,43 +518,49 @@ export const ReportsView: React.FC = () => {
                     </span>
                   </div>
                   <span className="text-[10px] text-[#6B706D]">
-                    Electricity, supplies & tea
+                    Rent {formatPKR(grandStats.rent)} + Bills {formatPKR(grandStats.electricity)} + Tea {formatPKR(grandStats.foodAndTea)}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* MONTHLY PROFIT BREAKDOWN (CARDS VIEW) */}
+            {/* PERIOD CARDS CAROUSEL / GRID (WEEKLY / MONTHLY / YEARLY) */}
             <div className="p-4 sm:p-5 border-b border-[#DCDDD9] space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <div>
                   <h3 className="text-sm font-bold text-[#202321] flex items-center gap-1.5">
                     <Calendar className="h-4 w-4 text-[#1B4D3E]" />
-                    <span>Monthly Profit Breakdown (ماہانہ منافع کی تفصیل)</span>
+                    <span>
+                      {profitPeriod === 'weekly'
+                        ? 'Weekly Profit Breakdown (ہفتہ وار منافع و لاگت)'
+                        : profitPeriod === 'yearly'
+                        ? 'Yearly Profit Breakdown (سالانہ منافع و لاگت)'
+                        : 'Monthly Profit Breakdown (ماہانہ منافع و لاگت)'}
+                    </span>
                   </h3>
                   <p className="text-[11px] text-[#6B706D]">
-                    Individual monthly performance comparing sales, overheads, and net profit
+                    Click any {profitPeriod === 'weekly' ? 'week' : profitPeriod === 'yearly' ? 'year' : 'month'} to examine its itemized income, daily tea/food, conveyance, and overheads
                   </p>
                 </div>
 
                 <div className="flex items-center gap-1.5 text-xs text-[#6B706D]">
                   <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#15803D]" />
-                  <span>Profitable Month</span>
+                  <span>Profitable Period</span>
                   <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#DC2626] ml-2" />
-                  <span>Operating Loss</span>
+                  <span>Deficit Period</span>
                 </div>
               </div>
 
-              {/* Monthly Cards Carousel / Grid */}
+              {/* Cards Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                {monthlyProfitList.map(month => {
-                  const isSelected = selectedMonthFilter === month.key;
-                  const isProfitable = month.netProfit >= 0;
+                {periodProfitList.map(item => {
+                  const isSelected = selectedPeriodFilter === item.key;
+                  const isProfitable = item.netProfit >= 0;
 
                   return (
                     <div
-                      key={month.key}
-                      onClick={() => setSelectedMonthFilter(isSelected ? 'all' : month.key)}
+                      key={item.key}
+                      onClick={() => setSelectedPeriodFilter(isSelected ? 'all' : item.key)}
                       className={`cursor-pointer rounded border p-3.5 transition-all ${
                         isSelected
                           ? 'border-[#1B4D3E] bg-[#F0FDF4] ring-1 ring-[#1B4D3E] shadow-sm'
@@ -474,7 +569,7 @@ export const ReportsView: React.FC = () => {
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-[#202321] flex items-center gap-1.5">
-                          <span>{month.label}</span>
+                          <span>{item.label}</span>
                           {isSelected && (
                             <span className="rounded bg-[#1B4D3E] px-1.5 py-0.2 text-[9px] font-bold text-white uppercase">
                               Active
@@ -482,22 +577,22 @@ export const ReportsView: React.FC = () => {
                           )}
                         </span>
                         <span className="text-[11px] font-mono text-[#6B706D]">
-                          {month.invoiceCount} {month.invoiceCount === 1 ? 'inv' : 'invs'}
+                          {item.invoiceCount} {item.invoiceCount === 1 ? 'inv' : 'invs'}
                         </span>
                       </div>
 
-                      {/* Monthly Profit Number */}
+                      {/* Net Profit Display */}
                       <div className="flex items-baseline justify-between my-2">
                         <div>
                           <span className="text-[10px] uppercase font-semibold text-[#6B706D] block">
-                            Monthly Net Profit
+                            Net Profit (خالص منافع)
                           </span>
                           <span
                             className={`text-xl font-bold font-mono tracking-tight ${
                               isProfitable ? 'text-[#15803D]' : 'text-[#DC2626]'
                             }`}
                           >
-                            {formatPKR(month.netProfit)}
+                            {formatPKR(item.netProfit)}
                           </span>
                         </div>
                         <span
@@ -507,23 +602,31 @@ export const ReportsView: React.FC = () => {
                               : 'bg-[#FEE2E2] text-[#DC2626]'
                           }`}
                         >
-                          {month.marginPercent.toFixed(1)}% Margin
+                          {item.marginPercent.toFixed(1)}% Margin ({item.roiPercent.toFixed(1)}% ROI)
                         </span>
                       </div>
 
-                      {/* Mini Breakdown Row */}
+                      {/* Financial Stream Breakdown */}
                       <div className="mt-2.5 pt-2 border-t border-[#DCDDD9] text-[11px] space-y-1 text-[#6B706D]">
                         <div className="flex justify-between">
-                          <span>Revenue:</span>
-                          <span className="font-mono text-[#202321] font-medium">{formatPKR(month.revenue)}</span>
+                          <span>Invoiced Sales:</span>
+                          <span className="font-mono text-[#202321] font-medium">{formatPKR(item.revenue)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Costs (COGS):</span>
-                          <span className="font-mono text-[#6B706D]">-{formatPKR(month.cogs)}</span>
+                          <span>Parts & Labour Cost:</span>
+                          <span className="font-mono text-[#6B706D]">-{formatPKR(item.cogs)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Expenses:</span>
-                          <span className="font-mono text-[#DC2626]">-{formatPKR(month.expenses)}</span>
+                          <span>Fixed Overhead (Rent & Bills):</span>
+                          <span className="font-mono text-[#DC2626]">-{formatPKR(item.fixedExpensesTotal)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Daily Expenses (Tea, Food, Fuel):</span>
+                          <span className="font-mono text-[#DC2626]">-{formatPKR(item.dailyExpensesTotal)}</span>
+                        </div>
+                        <div className="flex justify-between font-semibold text-[#202321] pt-1 border-t border-[#E5E7EB]">
+                          <span>Total Invested / Outflow:</span>
+                          <span className="font-mono">{formatPKR(item.totalInvestment)}</span>
                         </div>
                       </div>
                     </div>
@@ -532,67 +635,73 @@ export const ReportsView: React.FC = () => {
               </div>
             </div>
 
-            {/* MONTHLY PROFIT COMPARISON TABLE */}
+            {/* PERIOD COMPARISON TABLE */}
             <div className="overflow-x-auto text-xs">
               <table className="w-full text-left">
                 <thead className="border-b border-[#DCDDD9] bg-[#FAFAF9] text-[11px] font-semibold text-[#6B706D] uppercase tracking-wider">
                   <tr>
-                    <th className="px-4 py-2.5">Operating Month (مہینہ)</th>
+                    <th className="px-4 py-2.5">
+                      {profitPeriod === 'weekly' ? 'Week (ہفتہ)' : profitPeriod === 'yearly' ? 'Year (سال)' : 'Month (مہینہ)'}
+                    </th>
                     <th className="px-3 py-2.5 text-center">Invoices</th>
                     <th className="px-3 py-2.5 text-right">Invoiced Sales</th>
-                    <th className="px-3 py-2.5 text-right">Parts & Labour Cost</th>
-                    <th className="px-3 py-2.5 text-right">Shop Expenses</th>
-                    <th className="px-3 py-2.5 text-right">Gross Profit</th>
+                    <th className="px-3 py-2.5 text-right">Direct Cost (COGS)</th>
+                    <th className="px-3 py-2.5 text-right">Daily Expenses (چائے و خوراک)</th>
+                    <th className="px-3 py-2.5 text-right">Fixed Overheads (کرایہ و بل)</th>
+                    <th className="px-3 py-2.5 text-right">Total Invested (کل لاگت)</th>
                     <th className="px-4 py-2.5 text-right font-bold text-[#202321]">Net Profit (منافع)</th>
-                    <th className="px-3 py-2.5 text-right">Margin %</th>
+                    <th className="px-3 py-2.5 text-right">ROI %</th>
                     <th className="px-3 py-2.5 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#DCDDD9] font-mono">
-                  {monthlyProfitList.map(month => {
-                    const isSelected = selectedMonthFilter === month.key;
-                    const isProfitable = month.netProfit >= 0;
+                  {periodProfitList.map(item => {
+                    const isSelected = selectedPeriodFilter === item.key;
+                    const isProfitable = item.netProfit >= 0;
 
                     return (
                       <tr
-                        key={month.key}
-                        onClick={() => setSelectedMonthFilter(isSelected ? 'all' : month.key)}
+                        key={item.key}
+                        onClick={() => setSelectedPeriodFilter(isSelected ? 'all' : item.key)}
                         className={`cursor-pointer transition-colors ${
                           isSelected ? 'bg-[#E8F0EC]' : 'hover:bg-[#F5F5F3]'
                         }`}
                       >
                         <td className="px-4 py-2.5 font-sans font-bold text-[#202321]">
                           <div className="flex items-center gap-1.5">
-                            <span>{month.label}</span>
+                            <span>{item.label}</span>
                             {isSelected && (
                               <span className="text-[10px] text-[#1B4D3E] font-semibold">(Selected)</span>
                             )}
                           </div>
                         </td>
                         <td className="px-3 py-2.5 text-center text-[#6B706D]">
-                          {month.invoiceCount}
+                          {item.invoiceCount}
                         </td>
                         <td className="px-3 py-2.5 text-right font-medium text-[#202321]">
-                          {formatPKR(month.revenue)}
+                          {formatPKR(item.revenue)}
                         </td>
                         <td className="px-3 py-2.5 text-right text-[#6B706D]">
-                          -{formatPKR(month.cogs)}
+                          -{formatPKR(item.cogs)}
                         </td>
                         <td className="px-3 py-2.5 text-right text-[#DC2626]">
-                          -{formatPKR(month.expenses)}
+                          -{formatPKR(item.dailyExpensesTotal)}
                         </td>
-                        <td className="px-3 py-2.5 text-right font-medium text-[#15803D]">
-                          {formatPKR(month.grossProfit)}
+                        <td className="px-3 py-2.5 text-right text-[#DC2626]">
+                          -{formatPKR(item.fixedExpensesTotal)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-[#6B706D]">
+                          {formatPKR(item.totalInvestment)}
                         </td>
                         <td
                           className={`px-4 py-2.5 text-right font-bold text-sm ${
                             isProfitable ? 'text-[#15803D]' : 'text-[#DC2626]'
                           }`}
                         >
-                          {formatPKR(month.netProfit)}
+                          {formatPKR(item.netProfit)}
                         </td>
                         <td className="px-3 py-2.5 text-right font-semibold text-[#202321]">
-                          {month.marginPercent.toFixed(1)}%
+                          {item.roiPercent.toFixed(1)}%
                         </td>
                         <td className="px-3 py-2.5 text-center font-sans">
                           <span
@@ -610,11 +719,11 @@ export const ReportsView: React.FC = () => {
                   })}
                 </tbody>
 
-                {/* GRAND PROFIT SUMMARY ROW (FOOTER) */}
+                {/* GRAND SUMMARY ROW (FOOTER) */}
                 <tfoot className="border-t-2 border-[#1B4D3E] bg-[#E8F0EC] text-xs font-bold">
                   <tr>
                     <td className="px-4 py-3 font-sans text-sm text-[#1B4D3E]">
-                      Grand Profit (All Months Combined / تمام مہینے)
+                      Grand Cumulative Total ({periodProfitList.length} {profitPeriod === 'weekly' ? 'Weeks' : profitPeriod === 'yearly' ? 'Years' : 'Months'})
                     </td>
                     <td className="px-3 py-3 text-center font-mono text-[#1B4D3E]">
                       {grandStats.totalInvoices}
@@ -626,16 +735,19 @@ export const ReportsView: React.FC = () => {
                       -{formatPKR(grandStats.totalCOGS)}
                     </td>
                     <td className="px-3 py-3 text-right font-mono text-[#DC2626]">
-                      -{formatPKR(grandStats.totalExpenses)}
+                      -{formatPKR(grandStats.dailyExpenses)}
                     </td>
-                    <td className="px-3 py-3 text-right font-mono text-[#15803D]">
-                      {formatPKR(grandStats.grossProfit)}
+                    <td className="px-3 py-3 text-right font-mono text-[#DC2626]">
+                      -{formatPKR(grandStats.fixedExpenses)}
+                    </td>
+                    <td className="px-3 py-3 text-right font-mono text-[#6B706D]">
+                      {formatPKR(grandStats.totalInvestment)}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-base font-extrabold text-[#1B4D3E]">
                       {formatPKR(grandStats.grandNetProfit)}
                     </td>
                     <td className="px-3 py-3 text-right font-mono text-[#1B4D3E]">
-                      {grandStats.grandMargin.toFixed(1)}%
+                      {grandStats.grandRoi.toFixed(1)}%
                     </td>
                     <td className="px-3 py-3 text-center font-sans">
                       <span className="rounded bg-[#1B4D3E] text-white px-2 py-0.5 text-[10px] font-bold uppercase">
@@ -653,19 +765,19 @@ export const ReportsView: React.FC = () => {
             <div className="border-b border-[#DCDDD9] px-4 py-3 bg-[#FAFAF9] flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#202321]">
-                  Detailed Income & Expenditure Breakdown — {activeStatementData.label}
+                  Detailed Income & Expenditure Statement — {activeStatementData.label}
                 </h3>
                 <span className="text-[11px] text-[#6B706D]">
-                  Individual ledger accounts for auto parts, mechanic labour, and operating expenses
+                  Individual ledger accounts for auto parts, mechanic wages, daily food & tea, conveyance, rent, and utility bills
                 </span>
               </div>
 
-              {selectedMonthFilter !== 'all' && (
+              {selectedPeriodFilter !== 'all' && (
                 <button
-                  onClick={() => setSelectedMonthFilter('all')}
+                  onClick={() => setSelectedPeriodFilter('all')}
                   className="rounded border border-[#DCDDD9] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#1B4D3E] hover:bg-[#F5F5F3] transition-colors"
                 >
-                  Show All Months
+                  Show All Periods
                 </button>
               )}
             </div>
@@ -675,7 +787,7 @@ export const ReportsView: React.FC = () => {
                 {/* 1. Parts */}
                 <tr className="bg-[#FAFAF9] font-sans font-bold text-[#202321]">
                   <td colSpan={2} className="px-4 py-2 text-[11px] uppercase tracking-wider">
-                    1. Auto Parts & Products Revenue
+                    1. Auto Parts & Products Revenue & Cost
                   </td>
                 </tr>
                 <tr>
@@ -719,7 +831,7 @@ export const ReportsView: React.FC = () => {
                 {/* 3. Operating Overheads */}
                 <tr className="bg-[#FAFAF9] font-sans font-bold text-[#202321]">
                   <td colSpan={2} className="px-4 py-2 text-[11px] uppercase tracking-wider">
-                    3. Workshop Operating Expenses
+                    3. Workshop Operating Expenses (Daily & Fixed)
                   </td>
                 </tr>
                 {activeStatementData.expenses.length > 0 ? (
@@ -744,12 +856,18 @@ export const ReportsView: React.FC = () => {
                   <td className="px-4 py-2 text-right font-bold text-[#DC2626]">-{formatPKR(activeStatementData.totalExpenses)}</td>
                 </tr>
 
+                {/* Capital Summary */}
+                <tr className="bg-[#F9FAFB] font-sans font-bold text-[#4B5563]">
+                  <td className="px-6 py-2 text-[11px] uppercase tracking-wider">Total Capital Invested / Spent (COGS + Expenses)</td>
+                  <td className="px-4 py-2 text-right font-mono text-[#4B5563]">{formatPKR(activeStatementData.totalInvestment)}</td>
+                </tr>
+
                 {/* Net Final */}
                 <tr className="bg-[#E8F0EC] font-sans text-sm font-bold text-[#1B4D3E]">
                   <td className="px-6 py-3">
-                    {selectedMonthFilter === 'all' ? 'Grand Operating Net Profit (All Months)' : `Net Profit for ${activeStatementData.label}`}
+                    Net Operating Profit for {activeStatementData.label}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-base">{formatPKR(activeStatementData.netProfit)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-base font-extrabold">{formatPKR(activeStatementData.netProfit)}</td>
                 </tr>
               </tbody>
             </table>
@@ -936,6 +1054,7 @@ export const ReportsView: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

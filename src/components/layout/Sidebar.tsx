@@ -16,6 +16,7 @@ import {
   BarChart3,
   Settings,
   ShieldCheck,
+  Shield,
   Lock,
   Database,
   X
@@ -129,6 +130,12 @@ export const Sidebar: React.FC = () => {
           minRole: 'manager'
         },
         { id: 'reports', label: 'Profit & Reports', icon: BarChart3, minRole: 'manager' }
+      ]
+    },
+    {
+      title: 'Dubai Regulations & Policies',
+      items: [
+        { id: 'dubai_policies', label: 'Dubai Policies & RTA', icon: Shield, minRole: 'employee' }
       ]
     },
     {

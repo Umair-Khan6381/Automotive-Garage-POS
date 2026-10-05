@@ -6,7 +6,8 @@ import { sendSuccess, sendError } from '../utils/response';
 export const reportController = {
   getProfitReport: async (req: AuthRequest, res: Response) => {
     try {
-      const report = await reportService.getProfitAndLoss();
+      const period = (req.query.period as 'weekly' | 'monthly' | 'yearly') || 'monthly';
+      const report = await reportService.getProfitAndLoss(period);
       return sendSuccess(res, report);
     } catch (err: any) {
       return sendError(res, err.message, 500);

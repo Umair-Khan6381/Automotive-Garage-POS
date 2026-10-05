@@ -494,7 +494,7 @@ export const ProductsView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">Purchase Price (PKR)</label>
+                  <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">Purchase Price (AED)</label>
                   <input
                     type="number"
                     value={purchasePrice}
@@ -504,7 +504,7 @@ export const ProductsView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">Retail Selling Price (PKR)</label>
+                  <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">Retail Selling Price (AED)</label>
                   <input
                     type="number"
                     value={sellingPrice}

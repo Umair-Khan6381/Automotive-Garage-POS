@@ -3,8 +3,8 @@ import { profitService } from './profit.service';
 import { expenseService } from './expense.service';
 
 export const reportService = {
-  getProfitAndLoss: async () => {
-    return profitService.calculateGrandAndMonthlyProfit();
+  getProfitAndLoss: async (periodType: 'weekly' | 'monthly' | 'yearly' = 'monthly') => {
+    return profitService.calculateGrandAndMonthlyProfit(periodType);
   },
 
   getSalesSummary: async (startDate?: Date, endDate?: Date) => {

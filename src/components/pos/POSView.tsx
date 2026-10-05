@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Wrench,
   Percent,
+  Printer,
   X
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
@@ -20,7 +21,7 @@ import {
   InvoiceItem,
   PaymentMethod
 } from '../../types';
-import { formatPKR } from '../../utils/formatters';
+import { formatAED } from '../../utils/formatters';
 import { InvoiceDetailModal } from '../invoices/InvoiceDetailModal';
 
 export const POSView: React.FC = () => {
@@ -68,11 +69,42 @@ export const POSView: React.FC = () => {
   const [quickVehModel, setQuickVehModel] = useState<string>('');
   const [quickVehMileage, setQuickVehMileage] = useState<number>(50000);
 
-  // Labour Custom Input
+  // Labour Custom Input & Commission Mode
   const [selectedLabourId, setSelectedLabourId] = useState<string>('');
   const [labourDesc, setLabourDesc] = useState<string>('');
   const [labourCharge, setLabourCharge] = useState<number>(1500);
   const [labourCost, setLabourCost] = useState<number>(1000);
+  const [labourIsCommission, setLabourIsCommission] = useState<boolean>(false);
+  const [labourCommissionPct, setLabourCommissionPct] = useState<number>(40);
+
+  const handleSelectLabourWorker = (id: string) => {
+    setSelectedLabourId(id);
+    const worker = labourWorkers.find(w => w.id === id);
+    if (worker) {
+      if (worker.rateType === 'commission' || (worker.commissionPercentage && worker.commissionPercentage > 0)) {
+        setLabourIsCommission(true);
+        const pct = worker.commissionPercentage || 40;
+        setLabourCommissionPct(pct);
+        setLabourCost(Math.round(labourCharge * (pct / 100)));
+      } else {
+        setLabourIsCommission(false);
+        setLabourCost(worker.dailyRate ? Math.round(worker.dailyRate / 3) : 1000);
+      }
+    }
+  };
+
+  const handleLabourChargeChange = (charge: number) => {
+    setLabourCharge(charge);
+    if (labourIsCommission) {
+      setLabourCost(Math.round(charge * (labourCommissionPct / 100)));
+    }
+  };
+
+  const handleLabourCommissionPctChange = (pct: number) => {
+    const valid = Math.max(1, Math.min(100, pct));
+    setLabourCommissionPct(valid);
+    setLabourCost(Math.round(labourCharge * (valid / 100)));
+  };
 
   // Completed Invoice State for Printing
   const [completedInvoiceId, setCompletedInvoiceId] = useState<string | null>(null);
@@ -229,15 +261,19 @@ export const POSView: React.FC = () => {
     const worker = labourWorkers.find(w => w.id === selectedLabourId);
     if (!worker) return;
 
+    const finalCost = labourIsCommission ? Math.round(labourCharge * (labourCommissionPct / 100)) : Number(labourCost);
+
     const newItem: InvoiceItem = {
       id: `labour-${Date.now()}`,
       type: 'labour',
-      name: `Labour: ${labourDesc || worker.role} (${worker.name})`,
+      name: labourIsCommission
+        ? `Labour: ${labourDesc || worker.role} (${worker.name} - ${labourCommissionPct}% Comm)`
+        : `Labour: ${labourDesc || worker.role} (${worker.name})`,
       quantity: 1,
       unitPrice: Number(labourCharge),
       totalPrice: Number(labourCharge),
-      unitCost: Number(labourCost),
-      totalCost: Number(labourCost)
+      unitCost: finalCost,
+      totalCost: finalCost
     };
     setCartItems(prev => [...prev, newItem]);
     setLabourDesc('');
@@ -267,7 +303,7 @@ export const POSView: React.FC = () => {
       fullName: quickCustName,
       phone: quickCustPhone,
       email: `${quickCustName.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
-      address: quickCustAddress || 'Lahore'
+      address: quickCustAddress || 'Dubai, UAE'
     });
 
     setSelectedCustomerId(newCust.id);
@@ -609,7 +645,7 @@ export const POSView: React.FC = () => {
                           <div className="flex items-center gap-3 shrink-0">
                             <div className="text-right">
                               <div className="font-mono font-bold text-[#202321]">
-                                {formatPKR(p.sellingPrice)}
+                                {formatAED(p.sellingPrice)}
                               </div>
                               <span
                                 className={`text-[10px] font-mono ${
@@ -650,13 +686,13 @@ export const POSView: React.FC = () => {
                     </label>
                     <select
                       value={selectedLabourId}
-                      onChange={e => setSelectedLabourId(e.target.value)}
+                      onChange={e => handleSelectLabourWorker(e.target.value)}
                       className="w-full rounded border border-[#DCDDD9] bg-white px-2.5 py-1.5 text-xs text-[#202321] focus:border-[#1B4D3E] focus:outline-none"
                     >
                       <option value="">-- Choose Mechanic --</option>
                       {labourWorkers.map(w => (
                         <option key={w.id} value={w.id}>
-                          {w.name} — {w.role} (Daily: {formatPKR(w.dailyRate)})
+                          {w.name} — {w.rateType === 'commission' ? `(${w.commissionPercentage || 40}% Commission)` : `${w.role}`}
                         </option>
                       ))}
                     </select>
@@ -677,33 +713,110 @@ export const POSView: React.FC = () => {
 
                   <div>
                     <label className="text-[11px] font-semibold text-[#6B706D] uppercase tracking-wider block mb-1">
-                      Customer Charge (PKR)
+                      Customer Charge (AED) *
                     </label>
                     <input
                       type="number"
                       value={labourCharge}
-                      onChange={e => setLabourCharge(Number(e.target.value))}
-                      className="w-full rounded border border-[#DCDDD9] bg-white px-2.5 py-1.5 text-xs text-[#202321] font-mono focus:border-[#1B4D3E] focus:outline-none"
+                      onChange={e => handleLabourChargeChange(Number(e.target.value))}
+                      className="w-full rounded border border-[#DCDDD9] bg-white px-2.5 py-1.5 text-xs text-[#202321] font-mono font-bold focus:border-[#1B4D3E] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-semibold text-[#6B706D] uppercase tracking-wider block mb-1">
-                      Mechanic Wage Cost (PKR)
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-semibold text-[#6B706D] uppercase tracking-wider">
+                        {labourIsCommission ? 'Mechanic Share (Auto-computed)' : 'Mechanic Wage Cost (AED)'}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextState = !labourIsCommission;
+                          setLabourIsCommission(nextState);
+                          if (nextState) {
+                            setLabourCost(Math.round(labourCharge * (labourCommissionPct / 100)));
+                          }
+                        }}
+                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors ${
+                          labourIsCommission
+                            ? 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]'
+                            : 'bg-[#F5F5F3] text-[#6B706D] hover:bg-[#E8F0EC]'
+                        }`}
+                      >
+                        {labourIsCommission ? '✓ Commission Base' : '+ Switch to Commission %'}
+                      </button>
+                    </div>
                     <input
                       type="number"
                       value={labourCost}
+                      readOnly={labourIsCommission}
                       onChange={e => setLabourCost(Number(e.target.value))}
-                      className="w-full rounded border border-[#DCDDD9] bg-white px-2.5 py-1.5 text-xs text-[#202321] font-mono focus:border-[#1B4D3E] focus:outline-none"
+                      className={`w-full rounded border border-[#DCDDD9] px-2.5 py-1.5 text-xs font-mono font-bold focus:outline-none ${
+                        labourIsCommission ? 'bg-[#FFFBEB] text-[#92400E] border-[#FDE68A]' : 'bg-white text-[#202321] focus:border-[#1B4D3E]'
+                      }`}
                     />
                   </div>
                 </div>
 
+                {/* Commission % configuration panel if commission mode active */}
+                {labourIsCommission && (
+                  <div className="rounded border border-[#FDE68A] bg-[#FFFBEB] p-2.5 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[#92400E] flex items-center gap-1">
+                          <Percent className="h-3 w-3" />
+                          <span>Define Commission Percentage:</span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={labourCommissionPct}
+                            onChange={e => handleLabourCommissionPctChange(Number(e.target.value))}
+                            className="w-14 rounded border border-[#B45309] bg-white px-1.5 py-0.5 text-xs font-bold font-mono text-[#92400E] text-center"
+                          />
+                          <span className="font-bold text-[#92400E]">%</span>
+                        </div>
+                      </div>
+
+                      {/* Quick Percentage Presets */}
+                      <div className="flex flex-wrap gap-1">
+                        {[25, 30, 35, 40, 45, 50, 60].map(pct => (
+                          <button
+                            key={pct}
+                            type="button"
+                            onClick={() => handleLabourCommissionPctChange(pct)}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
+                              labourCommissionPct === pct
+                                ? 'bg-[#92400E] text-white'
+                                : 'bg-white border border-[#FDE68A] text-[#92400E] hover:bg-[#FEF3C7]'
+                            }`}
+                          >
+                            {pct}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[#FDE68A]/60">
+                      <span className="text-[#6B706D]">
+                        Customer Charge: <strong className="text-[#202321]">{formatAED(labourCharge)}</strong>
+                      </span>
+                      <span className="text-[#92400E]">
+                        Mechanic Earns ({labourCommissionPct}%): <strong>{formatAED(labourCost)}</strong>
+                      </span>
+                      <span className="text-[#15803D]">
+                        Workshop Profit: <strong>{formatAED(Math.max(0, labourCharge - labourCost))}</strong>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={handleAddLabour}
-                  className="rounded bg-[#1B4D3E] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#153E32] transition-colors"
+                  className="rounded bg-[#1B4D3E] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#153E32] transition-colors shadow-xs"
                 >
                   + Add Labour to Invoice
                 </button>
@@ -728,10 +841,10 @@ export const POSView: React.FC = () => {
                   >
                     <div>
                       <div className="font-semibold text-[#202321]">{preset.name}</div>
-                      <div className="text-[10px] text-[#6B706D] font-mono">Cost: {formatPKR(preset.cost)}</div>
+                      <div className="text-[10px] text-[#6B706D] font-mono">Cost: {formatAED(preset.cost)}</div>
                     </div>
                     <div className="font-mono font-bold text-[#1B4D3E]">
-                      {formatPKR(preset.charge)}
+                      {formatAED(preset.charge)}
                     </div>
                   </div>
                 ))}
@@ -773,7 +886,7 @@ export const POSView: React.FC = () => {
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold text-[#202321] truncate">{item.name}</div>
                       <div className="text-[11px] text-[#6B706D] font-mono">
-                        {formatPKR(item.unitPrice)} each
+                        {formatAED(item.unitPrice)} each
                       </div>
                     </div>
 
@@ -805,7 +918,7 @@ export const POSView: React.FC = () => {
                       )}
 
                       <div className="w-18 text-right font-mono font-bold text-[#202321]">
-                        {formatPKR(item.totalPrice)}
+                        {formatAED(item.totalPrice)}
                       </div>
 
                       <button
@@ -829,16 +942,16 @@ export const POSView: React.FC = () => {
             <div className="space-y-1 text-xs text-[#6B706D] font-mono">
               <div className="flex justify-between">
                 <span>Parts Subtotal:</span>
-                <span>{formatPKR(partsTotal)}</span>
+                <span>{formatAED(partsTotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Labour / Services:</span>
-                <span>{formatPKR(labourTotal + servicesTotal)}</span>
+                <span>{formatAED(labourTotal + servicesTotal)}</span>
               </div>
 
               {/* Discount Input */}
               <div className="flex justify-between items-center pt-1 border-t border-[#DCDDD9]">
-                <span className="font-sans text-[11px]">Discount (PKR):</span>
+                <span className="font-sans text-[11px]">Discount (AED):</span>
                 <input
                   type="number"
                   min="0"
@@ -850,7 +963,7 @@ export const POSView: React.FC = () => {
 
               {/* Tax Rate Input */}
               <div className="flex justify-between items-center">
-                <span className="font-sans text-[11px]">Tax Rate (%):</span>
+                <span className="font-sans text-[11px]">UAE VAT (%):</span>
                 <input
                   type="number"
                   min="0"
@@ -864,7 +977,7 @@ export const POSView: React.FC = () => {
               {/* Grand Total */}
               <div className="flex justify-between items-center pt-2 border-t border-[#DCDDD9] text-sm text-[#202321] font-bold">
                 <span className="font-sans">Grand Total:</span>
-                <span className="text-base text-[#1B4D3E]">{formatPKR(grandTotal)}</span>
+                <span className="text-base text-[#1B4D3E]">{formatAED(grandTotal)}</span>
               </div>
             </div>
 
@@ -875,7 +988,7 @@ export const POSView: React.FC = () => {
                   Payment Method
                 </label>
                 <div className="flex gap-1">
-                  {(['Cash', 'Bank Transfer', 'JazzCash / EasyPaisa', 'Card'] as PaymentMethod[]).map(pm => (
+                  {(['Cash', 'Card', 'Bank Transfer', 'Other'] as PaymentMethod[]).map(pm => (
                     <button
                       key={pm}
                       type="button"
@@ -886,7 +999,7 @@ export const POSView: React.FC = () => {
                           : 'border-[#DCDDD9] bg-white text-[#6B706D] hover:bg-[#F5F5F3]'
                       }`}
                     >
-                      {pm}
+                      {pm === 'Other' ? 'Cheque' : pm}
                     </button>
                   ))}
                 </div>
@@ -895,7 +1008,7 @@ export const POSView: React.FC = () => {
               {/* Amount Paid vs Balance */}
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <label className="text-[10px] text-[#6B706D] block mb-0.5">Amount Paid (PKR):</label>
+                  <label className="text-[10px] text-[#6B706D] block mb-0.5">Amount Paid (AED):</label>
                   <input
                     type="number"
                     value={amountPaid === null ? grandTotal : amountPaid}
@@ -908,7 +1021,7 @@ export const POSView: React.FC = () => {
                   <div className={`p-1 rounded font-mono font-bold text-xs ${
                     balanceDue > 0 ? 'text-[#DC2626] bg-[#FEE2E2]' : 'text-[#15803D] bg-[#DCFCE7]'
                   }`}>
-                    {formatPKR(balanceDue)}
+                    {formatAED(balanceDue)}
                   </div>
                 </div>
               </div>
@@ -916,22 +1029,49 @@ export const POSView: React.FC = () => {
               {/* Notes */}
               <input
                 type="text"
-                placeholder="Invoice notes / warranty remarks..."
+                placeholder="Invoice notes / Dubai warranty remarks..."
                 value={invoiceNotes}
                 onChange={e => setInvoiceNotes(e.target.value)}
                 className="w-full rounded border border-[#DCDDD9] bg-white px-2 py-1 text-xs text-[#202321] placeholder-[#6B706D] focus:border-[#1B4D3E] focus:outline-none"
               />
 
-              {/* Complete & Issue Bill Button */}
-              <button
-                type="button"
-                onClick={handleCheckout}
-                disabled={cartItems.length === 0}
-                className="w-full rounded bg-[#1B4D3E] py-2 text-xs font-bold text-white hover:bg-[#153E32] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs flex items-center justify-center gap-1.5"
-              >
-                <Check className="h-4 w-4" />
-                <span>Issue & Print Workshop Bill</span>
-              </button>
+              {/* Action Buttons: Cancel and Print Invoice */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const hasData = cartItems.length > 0 || selectedCustomerId || selectedJobCardId || invoiceNotes || discount > 0;
+                    if (!hasData) return;
+                    if (confirm('Are you sure you want to cancel and clear this invoice?')) {
+                      setCartItems([]);
+                      setSelectedJobCardId('');
+                      setSelectedCustomerId('');
+                      setSelectedVehicleId('');
+                      setDiscount(0);
+                      setTaxRate(0);
+                      setAmountPaid(null);
+                      setInvoiceNotes('');
+                    }
+                  }}
+                  disabled={cartItems.length === 0 && !selectedCustomerId && !selectedJobCardId && !invoiceNotes && discount === 0}
+                  className="inline-flex items-center justify-center gap-1.5 rounded border border-[#DCDDD9] bg-white px-4 py-2 text-xs font-semibold text-[#6B706D] hover:bg-[#FEE2E2] hover:text-[#DC2626] hover:border-[#FECACA] transition-colors shadow-2xs active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Cancel and clear invoice"
+                >
+                  <X className="h-4 w-4" />
+                  <span>Cancel</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCheckout}
+                  disabled={cartItems.length === 0}
+                  className="flex-1 rounded bg-[#1B4D3E] py-2 text-xs font-bold text-white hover:bg-[#153E32] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  title="Process checkout and print official invoice"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>Print Invoice</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -982,7 +1122,7 @@ export const POSView: React.FC = () => {
                 <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">Address / City</label>
                 <input
                   type="text"
-                  placeholder="e.g. Gulberg, Lahore"
+                  placeholder="e.g. Al Barsha 2, Dubai, UAE"
                   value={quickCustAddress}
                   onChange={e => setQuickCustAddress(e.target.value)}
                   className="w-full rounded border border-[#DCDDD9] px-2.5 py-1.5 focus:border-[#1B4D3E] focus:outline-none"

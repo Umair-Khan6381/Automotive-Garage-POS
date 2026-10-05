@@ -433,27 +433,27 @@ export const ExpensesView: React.FC = () => {
         <div className="flex items-center flex-wrap gap-2">
           {/* Quick Action Presets */}
           <button
-            onClick={() => handleQuickAdd('Tea', 300, 'Workshop Morning & Evening Tea')}
+            onClick={() => handleQuickAdd('Tea', 15, 'Workshop Morning & Evening Tea / Karak')}
             className="inline-flex items-center gap-1 rounded border border-[#DCDDD9] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#202321] hover:bg-[#F5F5F3] shadow-xs"
           >
             <Coffee className="h-3.5 w-3.5 text-[#B45309]" />
-            <span>+ Tea (Rs. 300)</span>
+            <span>+ Tea / Karak (AED 15.00)</span>
           </button>
 
           <button
-            onClick={() => handleQuickAdd('Breakfast', 800, 'Staff Morning Breakfast')}
+            onClick={() => handleQuickAdd('Breakfast', 35, 'Staff Morning Breakfast')}
             className="inline-flex items-center gap-1 rounded border border-[#DCDDD9] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#202321] hover:bg-[#F5F5F3] shadow-xs"
           >
             <Utensils className="h-3.5 w-3.5 text-[#15803D]" />
-            <span>+ Breakfast (Rs. 800)</span>
+            <span>+ Breakfast (AED 35.00)</span>
           </button>
 
           <button
-            onClick={() => handleQuickAdd('Conveyance', 1000, 'Parts Pickup Petrol / Conveyance')}
+            onClick={() => handleQuickAdd('Conveyance', 120, 'Parts Pickup Salik & Fuel / Conveyance')}
             className="inline-flex items-center gap-1 rounded border border-[#DCDDD9] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#202321] hover:bg-[#F5F5F3] shadow-xs"
           >
             <Car className="h-3.5 w-3.5 text-[#1B4D3E]" />
-            <span>+ Petrol / Travel (Rs. 1,000)</span>
+            <span>+ Fuel / Salik (AED 120.00)</span>
           </button>
 
           {/* Primary Add Expense Button */}
@@ -1113,7 +1113,7 @@ export const ExpensesView: React.FC = () => {
                 Overdue Status
               </span>
               <div className="mt-1 text-xl font-bold font-mono text-[#15803D]">
-                Rs. 0 Overdue
+                AED 0.00 Overdue
               </div>
               <span className="text-[10px] text-[#6B706D]">All electricity bills up to date</span>
             </div>
@@ -1502,7 +1502,7 @@ export const ExpensesView: React.FC = () => {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block font-semibold text-[#6B706D] mb-1">
-                    Amount (Rs.) *
+                    Amount (AED) *
                   </label>
                   <input
                     type="number"
@@ -1622,7 +1622,7 @@ export const ExpensesView: React.FC = () => {
                 </div>
                 <div>
                   <label className="block font-semibold text-[#6B706D] mb-1">
-                    Rent Amount (Rs.) *
+                    Rent Amount (AED) *
                   </label>
                   <input
                     type="number"
@@ -1741,7 +1741,7 @@ export const ExpensesView: React.FC = () => {
                 </div>
                 <div>
                   <label className="block font-semibold text-[#6B706D] mb-1">
-                    Bill Amount (Rs.) *
+                    Bill Amount (AED) *
                   </label>
                   <input
                     type="number"
@@ -1884,7 +1884,7 @@ export const ExpensesView: React.FC = () => {
                 </div>
                 <div>
                   <label className="block font-semibold text-[#6B706D] mb-1">
-                    Renewal Cost (Rs.) *
+                    Renewal Cost (AED) *
                   </label>
                   <input
                     type="number"
@@ -1982,7 +1982,7 @@ export const ExpensesView: React.FC = () => {
 
               <div>
                 <label className="block font-semibold text-[#6B706D] mb-1">
-                  Payment Amount to Disburse (Rs.)
+                  Payment Amount to Disburse (AED)
                 </label>
                 <input
                   type="number"

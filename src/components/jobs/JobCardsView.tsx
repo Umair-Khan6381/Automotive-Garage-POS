@@ -16,10 +16,13 @@ import {
   Package,
   Camera,
   Image,
-  X
+  X,
+  Percent,
+  CheckCircle2,
+  Sliders
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
-import { JobCard, JobStatus, LabourAssignment, JobPartItem } from '../../types';
+import { JobCard, JobStatus, LabourAssignment, JobPartItem, LabourRateType } from '../../types';
 import { formatPKR, formatDate } from '../../utils/formatters';
 
 export const JobCardsView: React.FC = () => {
@@ -57,6 +60,37 @@ export const JobCardsView: React.FC = () => {
   const [workerDesc, setWorkerDesc] = useState('');
   const [workerCharge, setWorkerCharge] = useState(1500);
   const [workerCost, setWorkerCost] = useState(1000);
+  const [workerRateType, setWorkerRateType] = useState<LabourRateType>('commission');
+  const [workerCommissionPct, setWorkerCommissionPct] = useState<number>(40);
+
+  const handleWorkerSelect = (workerId: string) => {
+    setSelectedWorkerId(workerId);
+    const worker = labourWorkers.find(w => w.id === workerId);
+    if (worker) {
+      if (worker.rateType === 'commission' || (worker.commissionPercentage && worker.commissionPercentage > 0)) {
+        setWorkerRateType('commission');
+        const pct = worker.commissionPercentage || 40;
+        setWorkerCommissionPct(pct);
+        setWorkerCost(Math.round(workerCharge * (pct / 100)));
+      } else {
+        setWorkerRateType(worker.rateType || 'fixed');
+        setWorkerCost(worker.dailyRate ? Math.round(worker.dailyRate / 3) : 1000);
+      }
+    }
+  };
+
+  const handleChargeChange = (charge: number) => {
+    setWorkerCharge(charge);
+    if (workerRateType === 'commission') {
+      setWorkerCost(Math.round(charge * (workerCommissionPct / 100)));
+    }
+  };
+
+  const handleCommissionPctChange = (pct: number) => {
+    const validPct = Math.max(1, Math.min(100, pct));
+    setWorkerCommissionPct(validPct);
+    setWorkerCost(Math.round(workerCharge * (validPct / 100)));
+  };
 
   // Parts inside modal
   const [modalParts, setModalParts] = useState<JobPartItem[]>([]);
@@ -117,14 +151,18 @@ export const JobCardsView: React.FC = () => {
     const worker = labourWorkers.find(w => w.id === selectedWorkerId);
     if (!worker) return;
 
+    const isComm = workerRateType === 'commission';
+    const finalCost = isComm ? Math.round(workerCharge * (workerCommissionPct / 100)) : workerCost;
+
     const assignment: LabourAssignment = {
       id: `la-${Date.now()}`,
       labourId: worker.id,
       labourName: worker.name,
-      rateType: 'fixed',
-      rate: workerCharge,
+      rateType: workerRateType,
+      rate: isComm ? workerCommissionPct : workerCharge,
+      commissionPercentage: isComm ? workerCommissionPct : undefined,
       units: 1,
-      costToShop: workerCost,
+      costToShop: finalCost,
       customerCharge: workerCharge,
       notes: workerDesc || worker.role
     };
@@ -586,54 +624,122 @@ export const JobCardsView: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <select
                     value={selectedWorkerId}
-                    onChange={e => setSelectedWorkerId(e.target.value)}
-                    className="rounded border border-[#DCDDD9] bg-white px-2 py-1 text-xs"
+                    onChange={e => handleWorkerSelect(e.target.value)}
+                    className="rounded border border-[#DCDDD9] bg-white px-2 py-1.5 text-xs font-medium"
                   >
                     <option value="">-- Choose Mechanic --</option>
                     {labourWorkers.map(w => (
                       <option key={w.id} value={w.id}>
-                        {w.name} ({w.role})
+                        {w.name} — {w.rateType === 'commission' ? `(${w.commissionPercentage || 40}% Commission)` : `(${w.role})`}
                       </option>
                     ))}
                   </select>
 
                   <input
                     type="text"
-                    placeholder="Work description"
+                    placeholder="Work description / task"
                     value={workerDesc}
                     onChange={e => setWorkerDesc(e.target.value)}
-                    className="rounded border border-[#DCDDD9] bg-white px-2 py-1 text-xs"
+                    className="rounded border border-[#DCDDD9] bg-white px-2 py-1.5 text-xs"
                   />
 
                   <div className="flex gap-1">
                     <input
                       type="number"
-                      placeholder="Charge (PKR)"
+                      placeholder="Customer Charge (AED)"
                       value={workerCharge}
-                      onChange={e => setWorkerCharge(Number(e.target.value))}
-                      className="w-full rounded border border-[#DCDDD9] bg-white px-2 py-1 text-xs font-mono"
+                      onChange={e => handleChargeChange(Number(e.target.value))}
+                      className="w-full rounded border border-[#DCDDD9] bg-white px-2 py-1.5 text-xs font-mono font-bold"
                     />
                     <button
                       type="button"
                       onClick={handleAddLabourToJob}
-                      className="rounded border border-[#DCDDD9] bg-white px-2.5 py-1 text-xs font-semibold text-[#1B4D3E] hover:bg-[#E8F0EC]"
+                      className="rounded bg-[#1B4D3E] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#153E32] transition-colors shadow-xs"
                     >
                       + Add
                     </button>
                   </div>
                 </div>
 
+                {/* Commission Percentage Controls & Live Share Preview when worker selected */}
+                {selectedWorkerId && (
+                  <div className="rounded border border-[#FDE68A] bg-[#FFFBEB] p-2 space-y-1.5 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[#92400E] flex items-center gap-1">
+                          <Percent className="h-3 w-3" />
+                          <span>Commission % on this Job:</span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={workerCommissionPct}
+                            onChange={e => handleCommissionPctChange(Number(e.target.value))}
+                            className="w-14 rounded border border-[#B45309] bg-white px-1.5 py-0.5 text-xs font-bold font-mono text-[#92400E] text-center"
+                          />
+                          <span className="font-bold text-[#92400E]">%</span>
+                        </div>
+                      </div>
+
+                      {/* Quick Chips */}
+                      <div className="flex flex-wrap gap-1">
+                        {[25, 30, 35, 40, 50, 60].map(pct => (
+                          <button
+                            key={pct}
+                            type="button"
+                            onClick={() => handleCommissionPctChange(pct)}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
+                              workerCommissionPct === pct
+                                ? 'bg-[#92400E] text-white'
+                                : 'bg-white border border-[#FDE68A] text-[#92400E] hover:bg-[#FEF3C7]'
+                            }`}
+                          >
+                            {pct}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[#FDE68A]/60">
+                      <span className="text-[#6B706D]">
+                        Customer Charge: <strong className="text-[#202321]">{formatPKR(workerCharge)}</strong>
+                      </span>
+                      <span className="text-[#92400E] font-medium">
+                        Mechanic Share ({workerCommissionPct}%): <strong>{formatPKR(Math.round(workerCharge * (workerCommissionPct / 100)))}</strong>
+                      </span>
+                      <span className="text-[#15803D] font-medium">
+                        Workshop Profit: <strong>{formatPKR(workerCharge - Math.round(workerCharge * (workerCommissionPct / 100)))}</strong>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {modalLabour.length > 0 && (
                   <div className="divide-y divide-[#DCDDD9] bg-white rounded border border-[#DCDDD9] text-[11px]">
                     {modalLabour.map((l, idx) => (
-                      <div key={idx} className="p-1.5 flex justify-between items-center">
-                        <span>{l.labourName} · {l.notes}</span>
+                      <div key={idx} className="p-2 flex justify-between items-center">
+                        <div>
+                          <span className="font-semibold text-[#202321]">{l.labourName}</span>
+                          <span className="text-[#6B706D] ml-1.5">· {l.notes}</span>
+                          {l.commissionPercentage ? (
+                            <span className="ml-2 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] text-[10px] font-bold">
+                              <Percent className="h-2.5 w-2.5" />
+                              {l.commissionPercentage}% Comm. (Worker: {formatPKR(l.costToShop)})
+                            </span>
+                          ) : (
+                            <span className="ml-2 inline-block px-1.5 py-0.2 rounded bg-[#F5F5F3] text-[#6B706D] text-[10px]">
+                              Cost: {formatPKR(l.costToShop)}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold">{formatPKR(l.customerCharge)}</span>
+                          <span className="font-mono font-bold text-[#202321]">{formatPKR(l.customerCharge)}</span>
                           <button
                             type="button"
                             onClick={() => setModalLabour(modalLabour.filter((_, i) => i !== idx))}
-                            className="text-[#DC2626]"
+                            className="text-[#DC2626] font-bold text-sm px-1 hover:bg-[#FEE2E2] rounded"
                           >
                             ×
                           </button>
@@ -695,7 +801,7 @@ export const JobCardsView: React.FC = () => {
               {/* Estimate Cost fallback */}
               <div>
                 <label className="text-[11px] font-semibold text-[#6B706D] block mb-1">
-                  Estimated Repair Cost (PKR)
+                  Estimated Repair Cost (AED)
                 </label>
                 <input
                   type="number"

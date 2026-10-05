@@ -157,6 +157,32 @@ async function runTests() {
   assert(monthlyGrossMargin === 140000, `Monthly gross margin accurate: Rs. ${monthlyGrossMargin}`);
   assert(monthlyNetProfit === 15400, `Monthly net profit after subtracting rent, electricity, and daily tea/food: Rs. ${monthlyNetProfit}`);
 
+  // Test 13: Weekly Profit Breakdown & Investment Calculation
+  console.log('\n--- 8. Multi-Period (Weekly, Monthly, Yearly) & Capital Investment ROI ---');
+  const weekRevenue = 65000;
+  const weekPartsCost = 22000;
+  const weekLabourCost = 8000;
+  const weekDailyExpenses = 5500; // Breakfast, Tea, Conveyance
+  const weekFixedRentShare = 20000; // Weekly portion of rent
+  const weekTotalInvestment = weekPartsCost + weekLabourCost + weekDailyExpenses + weekFixedRentShare; // 55,500
+  const weekNetProfit = weekRevenue - weekTotalInvestment; // 9,500
+  const weekRoi = Number(((weekNetProfit / weekTotalInvestment) * 100).toFixed(1)); // 17.1%
+  assert(weekTotalInvestment === 55500, `Weekly total investment calculated accurately: Rs. ${weekTotalInvestment}`);
+  assert(weekNetProfit === 9500, `Weekly net profit calculated accurately: Rs. ${weekNetProfit}`);
+  assert(weekRoi === 17.1, `Weekly return on investment (ROI) accurate: ${weekRoi}%`);
+
+  // Test 14: Yearly Cumulative Profit & Capital Return
+  const yearRevenue = 3200000;
+  const yearCOGS = 1400000;
+  const yearOperatingExpenses = 1250000;
+  const yearTotalInvestment = yearCOGS + yearOperatingExpenses; // 2,650,000
+  const yearNetProfit = yearRevenue - yearTotalInvestment; // 550,000
+  const yearRoi = Number(((yearNetProfit / yearTotalInvestment) * 100).toFixed(1)); // 20.8%
+  const yearMargin = Number(((yearNetProfit / yearRevenue) * 100).toFixed(1)); // 17.2%
+  assert(yearNetProfit === 550000, `Annual net profit calculated accurately: Rs. ${yearNetProfit}`);
+  assert(yearRoi === 20.8, `Annual capital ROI calculated accurately: ${yearRoi}%`);
+  assert(yearMargin === 17.2, `Annual net margin calculated accurately: ${yearMargin}%`);
+
   console.log('\n============================================================');
   console.log(`📊 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);
   console.log('============================================================\n');

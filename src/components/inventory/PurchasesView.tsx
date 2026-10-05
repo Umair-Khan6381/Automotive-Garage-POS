@@ -11,13 +11,13 @@ import {
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { PurchaseItem } from '../../types';
-import { formatPKR, formatDate } from '../../utils/formatters';
+import { formatAED, formatPKR, formatDate } from '../../utils/formatters';
 
 export const PurchasesView: React.FC = () => {
   const { products, recordPurchase, transactions } = useShop();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [supplier, setSupplier] = useState('Pak Petroleum Distributors');
+  const [supplier, setSupplier] = useState('ENOC Lubricants Distribution LLC (Dubai)');
   const [invoiceNumber, setInvoiceNumber] = useState(`PO-2026-${Date.now().toString().slice(-4)}`);
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
 
@@ -123,7 +123,7 @@ export const PurchasesView: React.FC = () => {
                 <th className="px-3 py-2.5">Product Received</th>
                 <th className="px-3 py-2.5 text-right">Quantity</th>
                 <th className="px-3 py-2.5 text-right">Unit Cost</th>
-                <th className="px-3.5 py-2.5 text-right">Total (PKR)</th>
+                <th className="px-3.5 py-2.5 text-right">Total (AED)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#DCDDD9]">
@@ -238,7 +238,7 @@ export const PurchasesView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="text-[10px] text-[#6B706D] block mb-0.5">Unit Cost (PKR)</label>
+                    <label className="text-[10px] text-[#6B706D] block mb-0.5">Unit Cost (AED)</label>
                     <div className="flex gap-1">
                       <input
                         type="number"

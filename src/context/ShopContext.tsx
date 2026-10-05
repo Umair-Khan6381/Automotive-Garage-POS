@@ -15,6 +15,7 @@ import {
   JobStatus,
   Invoice,
   PaymentRecord,
+  PaymentStatus,
   OilChangeRecord,
   ShopExpense,
   WorkshopRent,
@@ -22,7 +23,11 @@ import {
   ElectricityBill,
   AuditLog,
   ShopSettings,
-  PaymentMethod
+  PaymentMethod,
+  PaymentProof,
+  InvoicePrintEvent,
+  UserSessionRecord,
+  RecordChangeEntry
 } from '../types';
 import {
   INITIAL_SETTINGS,
@@ -42,13 +47,18 @@ import {
   INITIAL_LICENSES,
   INITIAL_ELECTRICITY_BILLS,
   INITIAL_TRANSACTIONS,
-  INITIAL_AUDIT_LOGS
+  INITIAL_AUDIT_LOGS,
+  INITIAL_USER_SESSIONS,
+  INITIAL_RECORD_CHANGES,
+  INITIAL_PRINT_HISTORY,
+  INITIAL_PAYMENT_PROOFS
 } from '../data/initialData';
 import {
   UnifiedExpenseItem,
   getUnifiedExpensesList
 } from '../utils/expenseCalculations';
 import { calculateWeightedAverageCost } from '../utils/calculations';
+import { formatPKR } from '../utils/formatters';
 import {
   hashPassword,
   verifyPassword,
@@ -80,7 +90,8 @@ export type AppView =
   | 'users'
   | 'settings'
   | 'backup'
-  | 'audit_logs';
+  | 'audit_logs'
+  | 'dubai_policies';
 
 interface ShopContextType {
   // Navigation & View State
@@ -181,6 +192,7 @@ interface ShopContextType {
   payments: PaymentRecord[];
   createInvoice: (data: Omit<Invoice, 'id' | 'createdDate'>) => Invoice;
   recordInvoicePayment: (invoiceId: string, amount: number, paymentMethod: PaymentMethod, reference?: string, notes?: string) => void;
+  cancelInvoice: (id: string, reason?: string) => void;
   deleteInvoice: (id: string) => void;
   processProductReturn: (invoiceId: string, productId: string, returnQty: number, reason: string) => void;
 
@@ -221,9 +233,18 @@ interface ShopContextType {
   settings: ShopSettings;
   updateSettings: (data: Partial<ShopSettings>) => void;
 
-  // Audit Logs
+  // Audit Logs & User Activity
   auditLogs: AuditLog[];
+  userSessions: UserSessionRecord[];
+  recordChanges: RecordChangeEntry[];
+  invoicePrintHistory: InvoicePrintEvent[];
+  paymentProofs: PaymentProof[];
   logAction: (action: string, module: AuditLog['module'], recordId: string, description: string) => void;
+  recordChange: (entry: Omit<RecordChangeEntry, 'id' | 'timestamp' | 'userId' | 'userName' | 'userRole'>) => void;
+  recordInvoicePrint: (invoiceId: string) => InvoicePrintEvent;
+  attachPaymentProof: (paymentId: string, proof: PaymentProof) => void;
+  recordCustomerPaymentWithProof: (invoiceId: string, amount: number, paymentMethod: PaymentMethod, proof?: PaymentProof, notes?: string) => PaymentRecord;
+  recordLabourPaymentWithProof: (workerId: string, amount: number, paymentMethod: PaymentMethod, period: string, proof?: PaymentProof, notes?: string) => LabourPayment;
 
   // Backup & Restore
   createBackupPayload: () => string;
@@ -263,6 +284,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           ...INITIAL_SETTINGS,
           ...parsed,
+          currency: 'AED',
+          timezone: 'Asia/Dubai',
+          defaultTaxRate: parsed.defaultTaxRate !== undefined && parsed.defaultTaxRate > 0 ? parsed.defaultTaxRate : 5,
           setupCompleted: true
         };
       } catch (e) {
@@ -460,6 +484,30 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
   });
 
+  // User Sessions & Login Activity
+  const [userSessions, setUserSessions] = useState<UserSessionRecord[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_user_sessions`);
+    return saved ? JSON.parse(saved) : INITIAL_USER_SESSIONS;
+  });
+
+  // Detailed Record Field Changes History
+  const [recordChanges, setRecordChanges] = useState<RecordChangeEntry[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_record_changes`);
+    return saved ? JSON.parse(saved) : INITIAL_RECORD_CHANGES;
+  });
+
+  // Invoice Print History
+  const [invoicePrintHistory, setInvoicePrintHistory] = useState<InvoicePrintEvent[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_print_history`);
+    return saved ? JSON.parse(saved) : INITIAL_PRINT_HISTORY;
+  });
+
+  // Payment Proofs Vault
+  const [paymentProofs, setPaymentProofs] = useState<PaymentProof[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_payment_proofs`);
+    return saved ? JSON.parse(saved) : INITIAL_PAYMENT_PROOFS;
+  });
+
   // Sync to localStorage
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(allUsers));
@@ -468,6 +516,22 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_settings`, JSON.stringify(settings));
   }, [settings]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY}_user_sessions`, JSON.stringify(userSessions));
+  }, [userSessions]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY}_record_changes`, JSON.stringify(recordChanges));
+  }, [recordChanges]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY}_print_history`, JSON.stringify(invoicePrintHistory));
+  }, [invoicePrintHistory]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY}_payment_proofs`, JSON.stringify(paymentProofs));
+  }, [paymentProofs]);
 
   useEffect(() => {
     if (currentSession) {
@@ -567,6 +631,21 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuditLogs(prev => [newLog, ...prev.slice(0, 499)]); // Keep last 500 audit entries
   }, [currentUser]);
 
+  // Detailed Record Field Change Logger
+  const recordChange = useCallback((
+    entry: Omit<RecordChangeEntry, 'id' | 'timestamp' | 'userId' | 'userName' | 'userRole'>
+  ) => {
+    const newChange: RecordChangeEntry = {
+      id: `rc-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toISOString(),
+      userId: currentUser?.id || 'system',
+      userName: currentUser?.name || 'System / Unauthenticated',
+      userRole: currentUser?.role || 'owner',
+      ...entry
+    };
+    setRecordChanges(prev => [newChange, ...prev.slice(0, 999)]);
+  }, [currentUser]);
+
   // Role permissions
   const isOwner = currentUser?.role === 'owner' || currentUser?.role === 'admin';
   const isManager = currentUser?.role === 'manager';
@@ -580,8 +659,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true; // Managers can access POS, inventory, jobs, reports, labour
     }
     if (isEmployee) {
-      // Employees have access to floor operations only
-      return ['dashboard', 'jobs', 'vehicles', 'customers', 'inventory', 'labour', 'oil_changes'].includes(view);
+      // Employees have access to floor operations and Dubai policies
+      return ['dashboard', 'jobs', 'vehicles', 'customers', 'inventory', 'labour', 'oil_changes', 'dubai_policies'].includes(view);
     }
     return false;
   }, [currentUser, isOwner, isManager, isEmployee]);
@@ -678,6 +757,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       clearFailedLogins(cleanId);
       const ownerUser: User = allUsers.find(u => u.role === 'owner' || u.role === 'admin') || INITIAL_USERS[0];
       const token = generateSessionToken();
+      const nowIso = new Date().toISOString();
       const session: AuthSession = {
         token,
         userId: ownerUser.id,
@@ -685,9 +765,22 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: HARDCODED_OWNER.name,
         role: 'owner',
         expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-        loginTime: new Date().toISOString()
+        loginTime: nowIso
       };
       setCurrentSession(session);
+
+      // Track active session
+      const ownerSession: UserSessionRecord = {
+        id: `sess-${Date.now()}`,
+        userId: ownerUser.id,
+        userName: HARDCODED_OWNER.name,
+        userRole: 'owner',
+        loginTimestamp: nowIso,
+        status: 'Active',
+        deviceInfo: typeof navigator !== 'undefined' ? `${navigator.userAgent.includes('Windows') ? 'Windows Desktop' : navigator.userAgent.includes('Android') ? 'Android Terminal' : 'Web Terminal'}` : 'Counter POS Desk'
+      };
+      setUserSessions(prev => [ownerSession, ...prev]);
+
       logAction('Login Success', 'Auth', ownerUser.id, `Owner @${HARDCODED_OWNER.username} logged in with master credentials`);
       setActiveView('dashboard');
       return { success: true };
@@ -800,6 +893,20 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentSession(session);
     setAuthFlashMessage(null);
 
+    // Track active session
+    const regularSession: UserSessionRecord = {
+      id: `sess-${Date.now()}`,
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role,
+      loginTimestamp: new Date().toISOString(),
+      status: 'Active',
+      deviceInfo: typeof navigator !== 'undefined'
+        ? `${navigator.userAgent.includes('Windows') ? 'Windows Terminal' : navigator.userAgent.includes('Android') ? 'Android Mobile' : 'Web Terminal'}`
+        : 'Garage Terminal'
+    };
+    setUserSessions(prev => [regularSession, ...prev]);
+
     logAction('User Logged In', 'Auth', user.id, `@${user.username} (${user.role}) logged in from garage terminal`);
     setActiveView('dashboard');
 
@@ -810,6 +917,14 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     if (currentUser) {
       logAction('User Logged Out', 'Auth', currentUser.id, `@${currentUser.username} ended garage terminal session`);
+      const nowIso = new Date().toISOString();
+      setUserSessions(prev =>
+        prev.map(s =>
+          s.userId === currentUser.id && s.status === 'Active'
+            ? { ...s, logoutTimestamp: nowIso, status: 'Logged Out' as const }
+            : s
+        )
+      );
     }
     setCurrentSession(null);
     setActiveView('login');
@@ -1044,42 +1159,141 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Customer Management
   const addCustomer = (data: Omit<Customer, 'id' | 'createdDate'>): Customer => {
+    const nowIso = new Date().toISOString();
     const newCustomer: Customer = {
       ...data,
       id: `cust-${Date.now()}`,
-      createdDate: new Date().toISOString().split('T')[0]
+      createdDate: nowIso.split('T')[0],
+      createdBy: currentUser?.id || 'usr-system',
+      createdByName: currentUser?.name || 'System User',
+      createdAt: nowIso
     };
     setCustomers(prev => [newCustomer, ...prev]);
-    logAction('Customer Created', 'Customer', newCustomer.id, `Added customer: ${newCustomer.fullName}`);
+    logAction('Customer Created', 'Customer', newCustomer.id, `Created customer account: ${newCustomer.fullName}`);
+    recordChange({
+      recordType: 'Customer',
+      recordId: newCustomer.id,
+      recordReference: newCustomer.fullName,
+      action: 'Created',
+      description: `Customer account registered for ${newCustomer.fullName} (${newCustomer.phone}) by ${currentUser?.name || 'System User'}`
+    });
     return newCustomer;
   };
 
   const updateCustomer = (id: string, data: Partial<Customer>) => {
-    setCustomers(prev => prev.map(c => (c.id === id ? { ...c, ...data } : c)));
-    logAction('Customer Updated', 'Customer', id, `Updated customer ID: ${id}`);
+    const cust = customers.find(c => c.id === id);
+    if (!cust) return;
+    const nowIso = new Date().toISOString();
+
+    setCustomers(prev =>
+      prev.map(c => {
+        if (c.id !== id) return c;
+        return {
+          ...c,
+          ...data,
+          createdBy: c.createdBy,
+          createdByName: c.createdByName,
+          createdAt: c.createdAt || c.createdDate,
+          updatedBy: currentUser?.id || 'usr-system',
+          updatedByName: currentUser?.name || 'System User',
+          updatedAt: nowIso
+        };
+      })
+    );
+
+    const changedFields: string[] = [];
+    Object.keys(data).forEach(key => {
+      const k = key as keyof Customer;
+      if (data[k] !== undefined && data[k] !== cust[k] && !['id', 'updatedAt', 'updatedBy', 'updatedByName'].includes(k)) {
+        changedFields.push(`${k}: ${cust[k] ?? 'empty'} → ${data[k]}`);
+      }
+    });
+
+    logAction('Customer Updated', 'Customer', id, `Updated customer: ${cust.fullName}. ${changedFields.join(', ')}`);
+    recordChange({
+      recordType: 'Customer',
+      recordId: id,
+      recordReference: cust.fullName,
+      action: 'Edited',
+      description: `Customer details modified by ${currentUser?.name || 'System User'}: ${changedFields.join(', ') || 'profile updated'}`
+    });
   };
 
   const deleteCustomer = (id: string) => {
     const cust = customers.find(c => c.id === id);
     setCustomers(prev => prev.filter(c => c.id !== id));
     logAction('Customer Deleted', 'Customer', id, `Deleted customer: ${cust?.fullName || id}`);
+    if (cust) {
+      recordChange({
+        recordType: 'Customer',
+        recordId: id,
+        recordReference: cust.fullName,
+        action: 'Voided',
+        description: `Customer account removed by ${currentUser?.name || 'Owner'}`
+      });
+    }
   };
 
   // Vehicle Management
   const addVehicle = (data: Omit<Vehicle, 'id' | 'createdDate'>): Vehicle => {
+    const nowIso = new Date().toISOString();
     const newVehicle: Vehicle = {
       ...data,
       id: `veh-${Date.now()}`,
-      createdDate: new Date().toISOString().split('T')[0]
+      createdDate: nowIso.split('T')[0],
+      createdBy: currentUser?.id || 'usr-system',
+      createdByName: currentUser?.name || 'System User',
+      createdAt: nowIso
     };
     setVehicles(prev => [newVehicle, ...prev]);
     logAction('Vehicle Registered', 'Vehicle', newVehicle.id, `Registered vehicle: ${newVehicle.registrationNumber}`);
+    recordChange({
+      recordType: 'Vehicle',
+      recordId: newVehicle.id,
+      recordReference: newVehicle.registrationNumber,
+      action: 'Created',
+      description: `Vehicle ${newVehicle.registrationNumber} (${newVehicle.make} ${newVehicle.model}) registered by ${currentUser?.name || 'System User'}`
+    });
     return newVehicle;
   };
 
   const updateVehicle = (id: string, data: Partial<Vehicle>) => {
-    setVehicles(prev => prev.map(v => (v.id === id ? { ...v, ...data } : v)));
-    logAction('Vehicle Updated', 'Vehicle', id, `Updated vehicle ID: ${id}`);
+    const veh = vehicles.find(v => v.id === id);
+    if (!veh) return;
+    const nowIso = new Date().toISOString();
+
+    setVehicles(prev =>
+      prev.map(v => {
+        if (v.id !== id) return v;
+        return {
+          ...v,
+          ...data,
+          createdBy: v.createdBy,
+          createdByName: v.createdByName,
+          createdAt: v.createdAt || v.createdDate,
+          updatedBy: currentUser?.id || 'usr-system',
+          updatedByName: currentUser?.name || 'System User',
+          updatedAt: nowIso
+        };
+      })
+    );
+
+    const changedFields: string[] = [];
+    Object.keys(data).forEach(key => {
+      const k = key as keyof Vehicle;
+      if (data[k] !== undefined && data[k] !== veh[k] && !['id', 'updatedAt', 'updatedBy', 'updatedByName'].includes(k)) {
+        changedFields.push(`${k}: ${veh[k] ?? 'empty'} → ${data[k]}`);
+      }
+    });
+
+    logAction('Vehicle Updated', 'Vehicle', id, `Updated vehicle: ${veh.registrationNumber}. ${changedFields.join(', ')}`);
+    recordChange({
+      recordType: 'Vehicle',
+      recordId: id,
+      recordReference: veh.registrationNumber,
+      action: 'Edited',
+      description: `Vehicle details modified by ${currentUser?.name || 'System User'}: ${changedFields.join(', ') || 'records updated'}`
+    });
   };
 
   const deleteVehicle = (id: string) => {
@@ -1090,10 +1304,14 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Inventory Management
   const addProduct = (data: Omit<Product, 'id' | 'createdDate'>): Product => {
+    const nowIso = new Date().toISOString();
     const newProduct: Product = {
       ...data,
       id: `prod-${Date.now()}`,
-      createdDate: new Date().toISOString().split('T')[0]
+      createdDate: nowIso.split('T')[0],
+      createdBy: currentUser?.id || 'usr-system',
+      createdByName: currentUser?.name || 'System User',
+      createdAt: nowIso
     };
     setProducts(prev => [newProduct, ...prev]);
 
@@ -1105,20 +1323,62 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         type: 'adjustment',
         quantity: newProduct.currentQuantity,
         unitCost: newProduct.purchasePrice,
-        date: new Date().toISOString(),
+        date: nowIso,
         reference: 'Initial Stock Onboarding',
-        user: currentUser?.name || 'Owner'
+        user: currentUser?.name || 'Owner',
+        userId: currentUser?.id
       };
       setTransactions(prev => [initialTx, ...prev]);
     }
 
     logAction('Product Created', 'Inventory', newProduct.id, `Added auto part: ${newProduct.name} (SKU: ${newProduct.sku})`);
+    recordChange({
+      recordType: 'Product',
+      recordId: newProduct.id,
+      recordReference: `${newProduct.name} (${newProduct.sku})`,
+      action: 'Created',
+      description: `New catalog item added: ${newProduct.name} at ${formatPKR(newProduct.sellingPrice)} by ${currentUser?.name || 'System User'}`
+    });
     return newProduct;
   };
 
   const updateProduct = (id: string, data: Partial<Product>) => {
-    setProducts(prev => prev.map(p => (p.id === id ? { ...p, ...data } : p)));
-    logAction('Product Updated', 'Inventory', id, `Updated part ID: ${id}`);
+    const prod = products.find(p => p.id === id);
+    if (!prod) return;
+    const nowIso = new Date().toISOString();
+
+    setProducts(prev =>
+      prev.map(p => {
+        if (p.id !== id) return p;
+        return {
+          ...p,
+          ...data,
+          createdBy: p.createdBy,
+          createdByName: p.createdByName,
+          createdAt: p.createdAt || p.createdDate,
+          updatedBy: currentUser?.id || 'usr-system',
+          updatedByName: currentUser?.name || 'System User',
+          updatedAt: nowIso
+        };
+      })
+    );
+
+    const changedFields: string[] = [];
+    Object.keys(data).forEach(key => {
+      const k = key as keyof Product;
+      if (data[k] !== undefined && data[k] !== prod[k] && !['id', 'updatedAt', 'updatedBy', 'updatedByName'].includes(k)) {
+        changedFields.push(`${k}: ${prod[k] ?? 'empty'} → ${data[k]}`);
+      }
+    });
+
+    logAction('Product Updated', 'Inventory', id, `Updated part: ${prod.name}. ${changedFields.join(', ')}`);
+    recordChange({
+      recordType: 'Product',
+      recordId: id,
+      recordReference: `${prod.name} (${prod.sku})`,
+      action: 'Edited',
+      description: `Part details changed by ${currentUser?.name || 'System User'}: ${changedFields.join(', ') || 'catalog updated'}`
+    });
   };
 
   const deleteProduct = (id: string) => {
@@ -1129,6 +1389,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const recordPurchase = (purchaseData: Omit<Purchase, 'id' | 'createdDate' | 'createdBy'>) => {
     const newTransactions: InventoryTransaction[] = [];
+    const nowIso = new Date().toISOString();
 
     setProducts(prevProducts => {
       return prevProducts.map(product => {
@@ -1151,15 +1412,19 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
           type: 'purchase',
           quantity: item.quantity,
           unitCost: item.purchasePrice,
-          date: purchaseData.purchaseDate || new Date().toISOString(),
+          date: purchaseData.purchaseDate || nowIso,
           reference: `PO-${purchaseData.invoiceNumber || 'NEW'} (${purchaseData.supplier})`,
-          user: currentUser?.name || 'Owner'
+          user: currentUser?.name || 'Owner',
+          userId: currentUser?.id
         });
 
         return {
           ...product,
           currentQuantity: newQty,
-          purchasePrice: newWeightedCost
+          purchasePrice: newWeightedCost,
+          updatedBy: currentUser?.id,
+          updatedByName: currentUser?.name,
+          updatedAt: nowIso
         };
       });
     });
@@ -1171,12 +1436,21 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newPurchase: Purchase = {
       ...purchaseData,
       id: `po-${Date.now()}`,
-      createdDate: new Date().toISOString(),
-      createdBy: currentUser?.name || 'Owner'
+      createdDate: nowIso,
+      createdBy: currentUser?.id || 'usr-system',
+      createdByName: currentUser?.name || 'Owner',
+      createdAt: nowIso
     };
     setPurchases(prev => [newPurchase, ...prev]);
 
-    logAction('Purchase Recorded', 'Purchase', purchaseData.invoiceNumber || 'PO', `Received stock PO from ${purchaseData.supplier}`);
+    logAction('Purchase Recorded', 'Purchase', newPurchase.id, `Received stock PO #${purchaseData.invoiceNumber || 'NEW'} from ${purchaseData.supplier} for ${formatPKR(purchaseData.totalCost)}`);
+    recordChange({
+      recordType: 'Purchase',
+      recordId: newPurchase.id,
+      recordReference: `PO #${purchaseData.invoiceNumber || 'NEW'} (${purchaseData.supplier})`,
+      action: 'Created',
+      description: `Purchase order logged: ${purchaseData.items.length} line items from ${purchaseData.supplier} totaling ${formatPKR(purchaseData.totalCost)} by ${currentUser?.name || 'Owner'}`
+    });
     return newPurchase;
   };
 
@@ -1190,7 +1464,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    setProducts(prev => prev.map(p => (p.id === productId ? { ...p, currentQuantity: newQty } : p)));
+    const nowIso = new Date().toISOString();
+    setProducts(prev => prev.map(p => (p.id === productId ? { ...p, currentQuantity: newQty, updatedAt: nowIso, updatedByName: currentUser?.name } : p)));
 
     const tx: InventoryTransaction = {
       id: `tx-${Date.now()}`,
@@ -1199,29 +1474,86 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       type,
       quantity: delta,
       unitCost: product.purchasePrice,
-      date: new Date().toISOString(),
+      date: nowIso,
       reference: reason,
-      user: currentUser?.name || 'Owner'
+      user: currentUser?.name || 'Owner',
+      userId: currentUser?.id
     };
     setTransactions(prev => [tx, ...prev]);
 
     logAction('Stock Adjusted', 'Inventory', productId, `Adjusted ${product.name} by ${delta > 0 ? '+' : ''}${delta}. Reason: ${reason}`);
+    recordChange({
+      recordType: 'Product',
+      recordId: productId,
+      recordReference: product.name,
+      action: 'Edited',
+      fieldChanged: 'Stock Quantity',
+      oldValue: `${product.currentQuantity} ${product.unit}`,
+      newValue: `${newQty} ${product.unit}`,
+      description: `Stock adjusted by ${delta > 0 ? '+' : ''}${delta} ${product.unit}. Reason: ${reason} (by ${currentUser?.name || 'Owner'})`
+    });
   };
 
   // Labour Management
   const addLabourWorker = (data: Omit<LabourWorker, 'id'>): LabourWorker => {
+    const nowIso = new Date().toISOString();
     const newWorker: LabourWorker = {
       ...data,
-      id: `tech-${Date.now()}`
+      id: `tech-${Date.now()}`,
+      workerCode: data.workerCode || `WRK-${String(labourWorkers.length + 1).padStart(3, '0')}`,
+      createdBy: currentUser?.id || 'usr-system',
+      createdByName: currentUser?.name || 'Owner',
+      createdAt: nowIso
     };
     setLabourWorkers(prev => [...prev, newWorker]);
-    logAction('Worker Added', 'Labour', newWorker.id, `Enrolled technician: ${newWorker.name}`);
+    logAction('Worker Added', 'Labour', newWorker.id, `Enrolled worker: ${newWorker.name} (${newWorker.role})`);
+    recordChange({
+      recordType: 'Labour',
+      recordId: newWorker.id,
+      recordReference: `${newWorker.name} (${newWorker.workerCode})`,
+      action: 'Created',
+      description: `Worker ${newWorker.name} registered as ${newWorker.role} with ${newWorker.rateType || 'daily'} rate structure by ${currentUser?.name || 'Owner'}`
+    });
     return newWorker;
   };
 
   const updateLabourWorker = (id: string, data: Partial<LabourWorker>) => {
-    setLabourWorkers(prev => prev.map(w => (w.id === id ? { ...w, ...data } : w)));
-    logAction('Worker Updated', 'Labour', id, `Updated technician ID: ${id}`);
+    const worker = labourWorkers.find(w => w.id === id);
+    if (!worker) return;
+    const nowIso = new Date().toISOString();
+
+    setLabourWorkers(prev =>
+      prev.map(w => {
+        if (w.id !== id) return w;
+        return {
+          ...w,
+          ...data,
+          createdBy: w.createdBy,
+          createdByName: w.createdByName,
+          createdAt: w.createdAt,
+          updatedBy: currentUser?.id || 'usr-system',
+          updatedByName: currentUser?.name || 'Owner',
+          updatedAt: nowIso
+        };
+      })
+    );
+
+    const changedFields: string[] = [];
+    Object.keys(data).forEach(key => {
+      const k = key as keyof LabourWorker;
+      if (data[k] !== undefined && data[k] !== worker[k] && !['id', 'updatedAt', 'updatedBy', 'updatedByName'].includes(k)) {
+        changedFields.push(`${k}: ${worker[k] ?? 'empty'} → ${data[k]}`);
+      }
+    });
+
+    logAction('Worker Updated', 'Labour', id, `Updated technician: ${worker.name}. ${changedFields.join(', ')}`);
+    recordChange({
+      recordType: 'Labour',
+      recordId: id,
+      recordReference: `${worker.name} (${worker.workerCode || id})`,
+      action: 'Edited',
+      description: `Worker profile modified by ${currentUser?.name || 'Owner'}: ${changedFields.join(', ') || 'records updated'}`
+    });
   };
 
   const deleteLabourWorker = (id: string) => {
@@ -1230,48 +1562,100 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logAction('Worker Deleted', 'Labour', id, `Removed technician: ${w?.name || id}`);
   };
 
-  const recordLabourPayment = (data: Omit<LabourPayment, 'id' | 'paidBy'>) => {
-    const newPayment: LabourPayment = {
-      ...data,
-      id: `labpay-${Date.now()}`,
-      paidBy: currentUser?.name || 'Owner'
-    };
-    setLabourPayments(prev => [newPayment, ...prev]);
-    logAction('Labour Payment', 'Labour', newPayment.id, `Paid ${settings.currency} ${data.amount} to ${data.labourName}`);
-  };
-
   // Job Cards
   const createJobCard = (data: Omit<JobCard, 'id' | 'createdDate' | 'updatedDate'>): JobCard => {
+    const nowIso = new Date().toISOString();
     const newJob: JobCard = {
       ...data,
       id: `job-${Date.now()}`,
-      createdDate: new Date().toISOString(),
-      updatedDate: new Date().toISOString()
+      createdDate: nowIso,
+      updatedDate: nowIso,
+      createdBy: currentUser?.id || 'usr-system',
+      createdByName: currentUser?.name || 'System User',
+      createdAt: nowIso
     };
     setJobCards(prev => [newJob, ...prev]);
     logAction('Job Card Created', 'Job', newJob.id, `Created Work Order #${newJob.jobNumber}`);
+    recordChange({
+      recordType: 'Job',
+      recordId: newJob.id,
+      recordReference: newJob.jobNumber,
+      action: 'Created',
+      description: `Job card #${newJob.jobNumber} created for complaint: "${newJob.complaint.slice(0, 60)}" by ${currentUser?.name || 'System User'}`
+    });
     return newJob;
   };
 
   const updateJobCard = (id: string, data: Partial<JobCard>) => {
+    const job = jobCards.find(j => j.id === id);
+    if (!job) return;
+    const nowIso = new Date().toISOString();
+
     setJobCards(prev =>
-      prev.map(j => (j.id === id ? { ...j, ...data, updatedDate: new Date().toISOString() } : j))
+      prev.map(j => {
+        if (j.id !== id) return j;
+        return {
+          ...j,
+          ...data,
+          createdBy: j.createdBy,
+          createdByName: j.createdByName,
+          createdAt: j.createdAt || j.createdDate,
+          updatedDate: nowIso,
+          updatedBy: currentUser?.id || 'usr-system',
+          updatedByName: currentUser?.name || 'System User',
+          updatedAt: nowIso
+        };
+      })
     );
-    logAction('Job Card Updated', 'Job', id, `Updated Work Order ID: ${id}`);
+
+    const changedFields: string[] = [];
+    if (data.status && data.status !== job.status) {
+      changedFields.push(`Status: ${job.status} → ${data.status}`);
+    }
+    if (data.estimatedCost !== undefined && data.estimatedCost !== job.estimatedCost) {
+      changedFields.push(`Estimate: ${formatPKR(job.estimatedCost)} → ${formatPKR(data.estimatedCost)}`);
+    }
+
+    logAction('Job Card Updated', 'Job', id, `Updated Work Order #${job.jobNumber}. ${changedFields.join(', ')}`);
+    recordChange({
+      recordType: 'Job',
+      recordId: id,
+      recordReference: job.jobNumber,
+      action: 'Edited',
+      description: `Job card #${job.jobNumber} updated by ${currentUser?.name || 'System User'}: ${changedFields.join(', ') || 'work order modified'}`
+    });
   };
 
   const updateJobStatus = (id: string, status: JobStatus) => {
+    const job = jobCards.find(j => j.id === id);
+    if (!job) return;
+    const nowIso = new Date().toISOString();
+
     setJobCards(prev =>
       prev.map(j => {
         if (j.id !== id) return j;
         return {
           ...j,
           status,
-          updatedDate: new Date().toISOString()
+          updatedDate: nowIso,
+          updatedBy: currentUser?.id,
+          updatedByName: currentUser?.name,
+          updatedAt: nowIso
         };
       })
     );
-    logAction('Job Status Changed', 'Job', id, `Changed job #${id} status to: ${status}`);
+
+    logAction('Job Status Changed', 'Job', id, `Changed job #${job.jobNumber} status: ${job.status} → ${status}`);
+    recordChange({
+      recordType: 'Job',
+      recordId: id,
+      recordReference: job.jobNumber,
+      action: 'Status Changed',
+      fieldChanged: 'Status',
+      oldValue: job.status,
+      newValue: status,
+      description: `Job status transitioned from ${job.status} to ${status} by ${currentUser?.name || 'System User'}`
+    });
   };
 
   const deleteJobCard = (id: string) => {
@@ -1282,10 +1666,16 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // POS & Invoicing
   const createInvoice = (data: Omit<Invoice, 'id' | 'createdDate'>): Invoice => {
+    const nowIso = new Date().toISOString();
     const newInvoice: Invoice = {
       ...data,
       id: `inv-${Date.now()}`,
-      createdDate: new Date().toISOString()
+      createdDate: nowIso,
+      createdBy: currentUser?.id || 'usr-system',
+      createdByName: currentUser?.name || 'Cashier',
+      createdAt: nowIso,
+      printCount: 0,
+      printHistory: []
     };
 
     setInvoices(prev => [newInvoice, ...prev]);
@@ -1306,11 +1696,14 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
           unitCost: p.purchasePrice,
           date: newInvoice.createdDate,
           reference: `Invoice ${newInvoice.invoiceNumber}`,
-          user: currentUser?.name || 'Cashier'
+          user: currentUser?.name || 'Cashier',
+          userId: currentUser?.id
         });
         return {
           ...p,
-          currentQuantity: newQty
+          currentQuantity: newQty,
+          updatedAt: nowIso,
+          updatedByName: currentUser?.name
         };
       })
     );
@@ -1326,23 +1719,153 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // If paid amount > 0, record initial payment record
     if (newInvoice.paidAmount > 0) {
+      const receiptNum = `REC-${String(payments.length + 1).padStart(5, '0')}`;
       const paymentRec: PaymentRecord = {
         id: `pay-${Date.now()}`,
+        receiptNumber: receiptNum,
         invoiceId: newInvoice.id,
         invoiceNumber: newInvoice.invoiceNumber,
         customerId: newInvoice.customerId,
         amount: newInvoice.paidAmount,
         paymentMethod: newInvoice.paymentMethod,
-        date: newInvoice.createdDate,
-        reference: 'Invoice POS Payment',
-        receivedBy: currentUser?.name || 'Cashier'
+        date: nowIso.slice(0, 10),
+        reference: receiptNum,
+        notes: 'Counter POS settlement',
+        receivedBy: currentUser?.name || 'Cashier',
+        recordedBy: currentUser?.id || 'usr-system',
+        recordedByName: currentUser?.name || 'Cashier',
+        recordedAt: nowIso
       };
       setPayments(prev => [paymentRec, ...prev]);
     }
 
     logAction('Invoice Issued', 'Invoice', newInvoice.id, `Generated invoice ${newInvoice.invoiceNumber} for ${settings.currency} ${newInvoice.grandTotal}`);
+    recordChange({
+      recordType: 'Invoice',
+      recordId: newInvoice.id,
+      recordReference: newInvoice.invoiceNumber,
+      action: 'Created',
+      description: `Invoice ${newInvoice.invoiceNumber} prepared and issued for ${formatPKR(newInvoice.grandTotal)} (Paid: ${formatPKR(newInvoice.paidAmount)}, Balance: ${formatPKR(newInvoice.balanceDue)}) by ${currentUser?.name || 'Cashier'}`
+    });
     return newInvoice;
   };
+
+  // Record Invoice Print Event (Increment count, track user & timestamp)
+  const recordInvoicePrint = useCallback((invoiceId: string): InvoicePrintEvent => {
+    const inv = invoices.find(i => i.id === invoiceId);
+    const nowIso = new Date().toISOString();
+    const count = (inv?.printCount || 0) + 1;
+
+    const printEvent: InvoicePrintEvent = {
+      id: `prt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      invoiceId,
+      invoiceNumber: inv?.invoiceNumber || invoiceId,
+      printedBy: currentUser?.id || 'usr-system',
+      printedByName: currentUser?.name || 'System User',
+      printTimestamp: nowIso,
+      printCount: count
+    };
+
+    setInvoicePrintHistory(prev => [printEvent, ...prev]);
+
+    setInvoices(prev =>
+      prev.map(i => {
+        if (i.id !== invoiceId) return i;
+        const currentHist = i.printHistory || [];
+        return {
+          ...i,
+          printCount: count,
+          printedBy: currentUser?.id || 'usr-system',
+          printedByName: currentUser?.name || 'System User',
+          printedAt: nowIso,
+          printHistory: [printEvent, ...currentHist]
+        };
+      })
+    );
+
+    logAction('Invoice Printed', 'Invoice', invoiceId, `Invoice ${inv?.invoiceNumber || invoiceId} printed by ${currentUser?.name || 'User'} (Count: ${count})`);
+    recordChange({
+      recordType: 'Invoice',
+      recordId: invoiceId,
+      recordReference: inv?.invoiceNumber || invoiceId,
+      action: 'Printed',
+      description: `Invoice printed by ${currentUser?.name || 'User'} on ${nowIso.slice(0, 10)} (Print Count: ${count})`
+    });
+
+    return printEvent;
+  }, [invoices, currentUser, logAction, recordChange]);
+
+  // Record Customer Payment with optional proof attachment and receipt generation
+  const recordCustomerPaymentWithProof = useCallback((
+    invoiceId: string,
+    amount: number,
+    paymentMethod: PaymentMethod,
+    proof?: PaymentProof,
+    notes?: string
+  ): PaymentRecord => {
+    const inv = invoices.find(i => i.id === invoiceId);
+    const nowIso = new Date().toISOString();
+    const receiptNumber = `REC-${String(payments.length + 1).padStart(5, '0')}`;
+
+    if (proof) {
+      setPaymentProofs(prev => [proof, ...prev]);
+    }
+
+    const paymentRecord: PaymentRecord = {
+      id: `pay-${Date.now()}`,
+      receiptNumber,
+      invoiceId,
+      invoiceNumber: inv?.invoiceNumber || invoiceId,
+      customerId: inv?.customerId || '',
+      amount,
+      paymentMethod,
+      date: nowIso.slice(0, 10),
+      reference: receiptNumber,
+      notes: notes || '',
+      receivedBy: currentUser?.name || 'Cashier',
+      recordedBy: currentUser?.id || 'usr-system',
+      recordedByName: currentUser?.name || 'System User',
+      recordedAt: nowIso,
+      proofAttachment: proof
+    };
+
+    setPayments(prev => [paymentRecord, ...prev]);
+
+    if (inv) {
+      const newPaid = (inv.paidAmount || 0) + amount;
+      const newBalance = Math.max(0, inv.grandTotal - newPaid);
+      const newStatus: PaymentStatus = newBalance === 0 ? 'Paid' : 'Partially Paid';
+
+      setInvoices(prev =>
+        prev.map(i => {
+          if (i.id !== invoiceId) return i;
+          return {
+            ...i,
+            paidAmount: newPaid,
+            balanceDue: newBalance,
+            paymentStatus: newStatus,
+            updatedBy: currentUser?.id,
+            updatedByName: currentUser?.name,
+            updatedAt: nowIso
+          };
+        })
+      );
+
+      logAction('Payment Recorded', 'Payment', paymentRecord.id, `Collected ${formatPKR(amount)} for ${inv.invoiceNumber} via ${paymentMethod} (${receiptNumber})`);
+      recordChange({
+        recordType: 'Invoice',
+        recordId: invoiceId,
+        recordReference: inv.invoiceNumber,
+        action: 'Payment Recorded',
+        fieldChanged: 'Payment Status',
+        oldValue: inv.paymentStatus,
+        newValue: newStatus,
+        description: `Payment of ${formatPKR(amount)} recorded via ${paymentMethod} (${receiptNumber}) by ${currentUser?.name || 'Cashier'}. Remaining balance: ${formatPKR(newBalance)}`
+      });
+    }
+
+    return paymentRecord;
+  }, [invoices, payments.length, currentUser, logAction, recordChange]);
 
   const recordInvoicePayment = (
     invoiceId: string,
@@ -1351,41 +1874,123 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     reference?: string,
     notes?: string
   ) => {
-    const inv = invoices.find(i => i.id === invoiceId);
+    recordCustomerPaymentWithProof(invoiceId, amount, paymentMethod, undefined, notes || reference);
+  };
+
+  // Record Labour Salary Payment with proof & receipt
+  const recordLabourPaymentWithProof = useCallback((
+    workerId: string,
+    amount: number,
+    paymentMethod: PaymentMethod,
+    period: string,
+    proof?: PaymentProof,
+    notes?: string
+  ): LabourPayment => {
+    const worker = labourWorkers.find(w => w.id === workerId);
+    const nowIso = new Date().toISOString();
+    const receiptNumber = `LAB-PAY-${String(labourPayments.length + 1).padStart(4, '0')}`;
+
+    if (proof) {
+      setPaymentProofs(prev => [proof, ...prev]);
+    }
+
+    const priorPaid = labourPayments.filter(p => p.labourId === workerId).reduce((a, b) => a + b.amount, 0);
+    const totalEarned = (worker?.dailyRate || 2500) * 12;
+    const remainingPayableAfter = Math.max(0, totalEarned - (priorPaid + amount));
+    const status = remainingPayableAfter === 0 ? 'Paid' : 'Partially Paid';
+
+    const newPayment: LabourPayment = {
+      id: `lab-pay-${Date.now()}`,
+      receiptNumber,
+      labourId: workerId,
+      labourName: worker?.name || 'Worker',
+      amount,
+      date: nowIso.slice(0, 10),
+      paymentPeriod: period,
+      paymentMethod,
+      reference: receiptNumber,
+      notes: notes || '',
+      paidBy: currentUser?.id || 'usr-owner',
+      paidByName: currentUser?.name || 'Owner',
+      paidAt: nowIso,
+      status,
+      remainingPayableAfter,
+      proofAttachment: proof
+    };
+
+    setLabourPayments(prev => [newPayment, ...prev]);
+
+    logAction('Labour Salary Paid', 'Labour', newPayment.id, `Disbursed ${formatPKR(amount)} to ${worker?.name} for ${period} via ${paymentMethod} (${receiptNumber})`);
+    recordChange({
+      recordType: 'LabourPayment',
+      recordId: newPayment.id,
+      recordReference: `${worker?.name} (${receiptNumber})`,
+      action: 'Payment Recorded',
+      description: `Salary disbursement of ${formatPKR(amount)} for period ${period} paid via ${paymentMethod} by ${currentUser?.name || 'Owner'}. Remaining balance: ${formatPKR(remainingPayableAfter)}`
+    });
+
+    return newPayment;
+  }, [labourWorkers, labourPayments, currentUser, logAction, recordChange]);
+
+  const recordLabourPayment = (data: Omit<LabourPayment, 'id' | 'paidBy'>) => {
+    recordLabourPaymentWithProof(data.labourId, data.amount, data.paymentMethod, data.paymentPeriod, undefined, data.notes);
+  };
+
+  const attachPaymentProof = useCallback((paymentId: string, proof: PaymentProof) => {
+    setPaymentProofs(prev => [proof, ...prev.filter(p => p.id !== proof.id)]);
+
+    setPayments(prev =>
+      prev.map(p => p.id === paymentId ? { ...p, proofAttachment: proof } : p)
+    );
+
+    setLabourPayments(prev =>
+      prev.map(p => p.id === paymentId ? { ...p, proofAttachment: proof } : p)
+    );
+
+    setExpenses(prev =>
+      prev.map(e => e.id === paymentId ? { ...e, proofAttachment: proof } : e)
+    );
+
+    logAction('Payment Proof Uploaded', 'Payment', paymentId, `Attached proof "${proof.fileName}" to transaction ${paymentId}`);
+  }, [logAction]);
+
+  const cancelInvoice = (id: string, reason: string = 'Invoice cancelled by user') => {
+    const inv = invoices.find(i => i.id === id);
     if (!inv) return;
 
-    const newPaid = inv.paidAmount + amount;
-    const newBalance = Math.max(0, inv.grandTotal - newPaid);
-    const newStatus = newBalance === 0 ? 'Paid' : 'Partially Paid';
+    // Restore stock for parts items
+    inv.items.forEach(item => {
+      if (item.type === 'part' && item.productId) {
+        adjustStock(item.productId, item.quantity, `Stock restored from cancelled invoice #${inv.invoiceNumber}`, 'return');
+      }
+    });
 
+    // If attached to a job card, revert job card to completed so it can be re-invoiced or inspected
+    if (inv.jobCardId) {
+      updateJobStatus(inv.jobCardId, 'completed');
+    }
+
+    const nowIso = new Date().toISOString();
     setInvoices(prev =>
       prev.map(i =>
-        i.id === invoiceId
+        i.id === id
           ? {
               ...i,
-              paidAmount: newPaid,
-              balanceDue: newBalance,
-              paymentStatus: newStatus
+              paymentStatus: 'Cancelled',
+              isCancelled: true,
+              cancelReason: reason,
+              cancelledAt: nowIso,
+              cancelledBy: currentUser?.id,
+              cancelledByName: currentUser?.name || 'Staff',
+              updatedAt: nowIso,
+              updatedByName: currentUser?.name || 'Staff',
+              notes: `${i.notes ? i.notes + ' | ' : ''}[CANCELLED: ${reason}]`
             }
           : i
       )
     );
 
-    const paymentRecord: PaymentRecord = {
-      id: `pay-${Date.now()}`,
-      invoiceId,
-      invoiceNumber: inv.invoiceNumber,
-      customerId: inv.customerId,
-      amount,
-      paymentMethod,
-      date: new Date().toISOString(),
-      reference,
-      notes,
-      receivedBy: currentUser?.name || 'Cashier'
-    };
-    setPayments(prev => [paymentRecord, ...prev]);
-
-    logAction('Payment Collected', 'Payment', invoiceId, `Collected ${settings.currency} ${amount} on ${inv.invoiceNumber} via ${paymentMethod}`);
+    logAction('Invoice Cancelled', 'Invoice', id, `Cancelled and voided invoice ${inv.invoiceNumber}. Restored items to inventory.`);
   };
 
   const deleteInvoice = (id: string) => {
@@ -1830,6 +2435,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         payments,
         createInvoice,
         recordInvoicePayment,
+        cancelInvoice,
         deleteInvoice,
         processProductReturn,
         oilChanges,
@@ -1858,7 +2464,16 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         settings,
         updateSettings,
         auditLogs,
+        userSessions,
+        recordChanges,
+        invoicePrintHistory,
+        paymentProofs,
         logAction,
+        recordChange,
+        recordInvoicePrint,
+        attachPaymentProof,
+        recordCustomerPaymentWithProof,
+        recordLabourPaymentWithProof,
         createBackupPayload,
         restoreDatabase,
         resetToDemoData
