@@ -1,0 +1,45 @@
+import { Router } from 'express';
+import authRoutes from './auth.routes';
+import userRoutes from './user.routes';
+import customerRoutes from './customer.routes';
+import vehicleRoutes from './vehicle.routes';
+import supplierRoutes from './supplier.routes';
+import productRoutes from './product.routes';
+import purchaseRoutes from './purchase.routes';
+import jobRoutes from './job.routes';
+import invoiceRoutes from './invoice.routes';
+import paymentRoutes from './payment.routes';
+import expenseRoutes from './expense.routes';
+import labourRoutes from './labour.routes';
+import oilRoutes from './oil.routes';
+import reportRoutes from './report.routes';
+import dashboardRoutes from './dashboard.routes';
+import backupRoutes from './backup.routes';
+import auditRoutes from './audit.routes';
+import settingRoutes from './setting.routes';
+
+const apiRouter = Router();
+
+apiRouter.use('/auth', authRoutes);
+apiRouter.use('/users', userRoutes);
+apiRouter.use('/customers', customerRoutes);
+apiRouter.use('/vehicles', vehicleRoutes);
+apiRouter.use('/suppliers', supplierRoutes);
+apiRouter.use('/products', productRoutes);
+apiRouter.use('/inventory', productRoutes);
+apiRouter.use('/purchases', purchaseRoutes);
+apiRouter.use('/jobs', jobRoutes);
+apiRouter.use('/invoices', invoiceRoutes);
+apiRouter.use('/pos', invoiceRoutes);
+apiRouter.use('/payments', paymentRoutes);
+apiRouter.use('/expenses', expenseRoutes);
+apiRouter.use('/labour', labourRoutes);
+apiRouter.use('/payroll', labourRoutes);
+apiRouter.use('/oil-changes', oilRoutes);
+apiRouter.use('/reports', reportRoutes);
+apiRouter.use('/dashboard', dashboardRoutes);
+apiRouter.use('/backup', backupRoutes);
+apiRouter.use('/audit-logs', auditRoutes);
+apiRouter.use('/settings', settingRoutes);
+
+export default apiRouter;

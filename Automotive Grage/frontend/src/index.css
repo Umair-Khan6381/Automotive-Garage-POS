@@ -1,0 +1,181 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@layer base {
+  :root {
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --bg-base: #F5F5F3;
+    --bg-surface: #FFFFFF;
+    --text-primary: #202321;
+    --text-secondary: #6B706D;
+    --border-subtle: #DCDDD9;
+    --accent-teal: #1B4D3E;
+    --accent-teal-hover: #153E32;
+    --app-font-scale: 1.0;
+  }
+
+  *, *::before, *::after {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Smooth scrolling and root typography scale */
+  html {
+    font-family: var(--font-sans);
+    background-color: #F5F5F3;
+    color: #202321;
+    font-size: calc(14px * var(--app-font-scale, 1.0));
+    line-height: 1.5;
+    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #F5F5F3;
+    color: #202321;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  table {
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+
+  input, select, textarea, button {
+    font-family: var(--font-sans);
+  }
+
+  /* Accessible and subtle focus visible styling */
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid #1B4D3E;
+    outline-offset: 1px;
+  }
+}
+
+.font-mono, [class*="font-mono"] {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tabular figures for monetary numbers and quantities */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Subtle modern interactive micro-transitions */
+button, a, input, select, textarea {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+button:active {
+  transform: scale(0.985);
+}
+
+/* Clean utilitarian scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #DCDDD9;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B8B9B4;
+}
+
+/* Clean semantic styling classes */
+.page-title {
+  font-size: 1.5rem; /* 24px */
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #202321;
+}
+
+.section-heading {
+  font-size: 1.125rem; /* 18px */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #202321;
+}
+
+.panel-heading {
+  font-size: 1rem; /* 16px */
+  font-weight: 600;
+  color: #202321;
+}
+
+.body-text, .table-text {
+  font-size: 0.875rem; /* 14px */
+  font-weight: 400;
+  color: #202321;
+}
+
+.label-text {
+  font-size: 0.8125rem; /* 13px */
+  font-weight: 500;
+  color: #6B706D;
+}
+
+.metric-number {
+  font-size: 1.625rem; /* 26px */
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+@media print {
+  html, body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 12pt !important;
+  }
+
+  /* Hide main application navigation, header, sidebar, and no-print buttons */
+  header, nav, aside, .no-print, [role="navigation"] {
+    display: none !important;
+  }
+
+  /* Neutralize modal overlays so there's no dark transparent gray box on paper */
+  .fixed.inset-0 {
+    position: static !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-container, [id^="printable-"] {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 10mm !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border-radius: 0 !important;
+  }
+}
