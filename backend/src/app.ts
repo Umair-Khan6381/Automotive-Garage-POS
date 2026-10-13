@@ -20,18 +20,23 @@ export const createApp = () => {
   app.use(express.json({ limit: '20mb' }));
   app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
-  // Root Health Check
-  app.get('/api/health', (req: Request, res: Response) => {
+  // Health Checks
+  const healthHandler = (req: Request, res: Response) => {
     res.json({
       status: 'healthy',
-      app: 'Private Garage POS & Workshop Engine',
+      app: 'Private Garage POS & Workshop Engine (Dubai)',
+      currency: 'AED',
+      timezone: 'Asia/Dubai',
       version: '2.0.0',
       timestamp: new Date().toISOString()
     });
-  });
+  };
+  app.get('/api/health', healthHandler);
+  app.get('/health', healthHandler);
 
   // Master API Mount
   app.use('/api', apiRouter);
+  app.use('/', apiRouter);
 
   // Global Error Handler
   app.use(errorHandler);

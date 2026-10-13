@@ -632,17 +632,17 @@ export const SettingsView: React.FC = () => {
 
           <div className="space-y-3">
             <p className="text-xs text-[#6B706D]">
-              This workshop system runs in dedicated single-business mode. Public user registration is disabled, and customers are maintained purely as garage records without portal logins.
+              This workshop system supports both owner-managed account provisioning and self-service registration for technicians, managers, and staff members.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
               <div className="rounded border border-[#DCDDD9] bg-[#F5F5F3] p-2.5">
-                <span className="text-[10px] uppercase font-bold text-[#6B706D] block">Public Signup</span>
-                <span className="text-xs font-semibold text-[#DC2626]">Permanently Disabled</span>
+                <span className="text-[10px] uppercase font-bold text-[#6B706D] block">User Sign Up</span>
+                <span className="text-xs font-semibold text-[#15803D]">Enabled (Portal Active)</span>
               </div>
               <div className="rounded border border-[#DCDDD9] bg-[#F5F5F3] p-2.5">
                 <span className="text-[10px] uppercase font-bold text-[#6B706D] block">Account Provisioning</span>
-                <span className="text-xs font-semibold text-[#15803D]">Owner-Controlled Only</span>
+                <span className="text-xs font-semibold text-[#15803D]">Self & Owner Controlled</span>
               </div>
               <div className="rounded border border-[#DCDDD9] bg-[#F5F5F3] p-2.5">
                 <span className="text-[10px] uppercase font-bold text-[#6B706D] block">Brute-Force Shield</span>

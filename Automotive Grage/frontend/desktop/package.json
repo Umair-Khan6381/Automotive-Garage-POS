@@ -1,0 +1,18 @@
+{
+  "name": "garage-pos-desktop",
+  "version": "2.0.0",
+  "description": "Desktop Application for Garage POS & Workshop Management (Electron)",
+  "main": "dist/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "tsc && electron-builder"
+  },
+  "dependencies": {
+    "electron-is-dev": "^3.0.1"
+  },
+  "devDependencies": {
+    "electron": "^34.0.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.0"
+  }
+}

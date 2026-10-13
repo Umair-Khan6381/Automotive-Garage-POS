@@ -264,11 +264,81 @@ garage-pos/
 │       ├── formatters.ts   # Currency, odometer mileage & date formatting
 │       ├── security.ts     # PBKDF2 password hashing & brute-force limits
 │       └── validation.ts   # Input validation for forms & records
+├── api/
+│   └── index.ts           # Vercel serverless function entry point
+├── database/
+│   └── scripts/           # db:backup and db:migrate:turso utilities
+├── backend/               # Serverless Express REST API engine & Prisma ORM
 ├── electron/
 │   ├── main.ts            # Electron desktop main process & PDF printing
 │   └── preload.ts         # Secure contextBridge IPC
 ├── capacitor.config.ts    # Mobile configuration (Android & iOS)
-├── .env.example           # Environment template
+├── .env.example           # Environment template with Turso & Vercel Blob keys
+├── vercel.json            # Vercel SPA + /api routing configuration
 ├── package.json           # Dependencies and build scripts
 └── README.md              # Complete developer & operator documentation
 ```
+
+---
+
+## 10. Vercel Cloud Deployment Guide (Dubai Private Garage)
+
+This application is ready to deploy directly to **Vercel** with **Turso Cloud** persistent SQLite/libSQL database and **Vercel Blob** storage.
+
+### Step 1: Set up Turso Cloud Database (Persistent SQLite)
+1. Install Turso CLI or log in at [turso.tech](https://turso.tech):
+   ```bash
+   # Install CLI
+   curl -sSfL https://get.tur.so/install.sh | bash
+
+   # Create cloud database for your garage
+   turso db create garage-pos
+
+   # Obtain connection URL (e.g., libsql://garage-pos-yourorg.turso.io)
+   turso db show garage-pos --url
+
+   # Generate long-lived Auth Token
+   turso db tokens create garage-pos
+   ```
+2. Push the schema to Turso:
+   ```bash
+   TURSO_DATABASE_URL="<your_turso_url>" TURSO_AUTH_TOKEN="<your_turso_token>" npx prisma db push
+   ```
+
+### Step 2: Push to GitHub
+```bash
+git init
+git add .
+git commit -m "Automotive Garage POS - Vercel Ready"
+git remote add origin https://github.com/your-username/garage-pos.git
+git branch -M main
+git push -u origin main
+```
+
+### Step 3: Deploy to Vercel
+1. Log in to [vercel.com](https://vercel.com) and click **"Add New..." > "Project"**.
+2. Select your `garage-pos` GitHub repository.
+3. Vercel automatically detects the Vite framework and settings:
+   - **Framework Preset**: Vite
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+4. Add the following **Environment Variables** in the Vercel dashboard:
+   - `TURSO_DATABASE_URL`: `libsql://your-garage-db.turso.io`
+   - `TURSO_AUTH_TOKEN`: `your_turso_auth_token`
+   - `JWT_SECRET`: `generate_a_random_32_byte_secret`
+   - `CURRENCY`: `AED`
+   - `TIMEZONE`: `Asia/Dubai`
+   - `PRIVATE_GARAGE_MODE`: `true`
+5. *(Optional for Receipts/Proof Storage)* Under **Storage** in your Vercel project, add a **Vercel Blob** database. Vercel automatically sets `BLOB_READ_WRITE_TOKEN`.
+6. Click **Deploy**. Your garage POS is live on your private HTTPS domain!
+
+### Step 4: Backup & Migrate Data
+- **Backup Local Records**:
+  ```bash
+  npm run db:backup
+  ```
+- **Migrate to Turso Cloud**:
+  ```bash
+  npm run db:migrate:turso
+  ```
+

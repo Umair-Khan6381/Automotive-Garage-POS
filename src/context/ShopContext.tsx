@@ -72,6 +72,7 @@ import {
 
 export type AppView =
   | 'login'
+  | 'signup'
   | 'setup'
   | 'registration_disabled'
   | 'dashboard'
@@ -127,6 +128,15 @@ interface ShopContextType {
   authFlashMessage: string | null;
   setAuthFlashMessage: (msg: string | null) => void;
   login: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  registerUser: (data: {
+    name: string;
+    username: string;
+    email: string;
+    phone?: string;
+    role?: UserRole;
+    password: string;
+    autoLogin?: boolean;
+  }) => Promise<{ success: boolean; error?: string; user?: User }>;
   logout: () => void;
   completeFirstTimeSetup: (data: SetupFormData) => Promise<{ success: boolean; error?: string }>;
   
@@ -265,7 +275,7 @@ interface ShopContextType {
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'apex_garage_pos_v2';
+const STORAGE_KEY = 'automotive_garage_pos_clean_v1';
 
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Load users from storage
@@ -343,7 +353,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Initial view routing based on hash or auth state
     const hash = typeof window !== 'undefined' ? window.location.hash.toLowerCase() : '';
     if (hash.includes('signup') || hash.includes('register') || hash.includes('create-account')) {
-      return 'registration_disabled';
+      return 'signup';
     }
     if (hash.includes('setup')) {
       return 'setup';
@@ -373,7 +383,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleHashChange = () => {
       const hash = window.location.hash.toLowerCase();
       if (hash.includes('signup') || hash.includes('register') || hash.includes('create-account')) {
-        setActiveViewState('registration_disabled');
+        setActiveViewState('signup');
       } else if (hash.includes('setup')) {
         setActiveViewState('setup');
       } else if (hash.includes('login')) {
@@ -392,11 +402,11 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Authentication barrier: redirect unauthenticated users to login or setup
   useEffect(() => {
     if (!setupCompleted) {
-      if (activeView !== 'setup' && activeView !== 'registration_disabled') {
+      if (activeView !== 'setup' && activeView !== 'registration_disabled' && activeView !== 'signup') {
         setActiveViewState('setup');
       }
     } else if (!currentUser) {
-      if (activeView !== 'login' && activeView !== 'setup' && activeView !== 'registration_disabled') {
+      if (activeView !== 'login' && activeView !== 'setup' && activeView !== 'signup' && activeView !== 'registration_disabled') {
         setActiveViewState('login');
       }
     }
@@ -949,6 +959,102 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setCurrentSession(null);
     setActiveView('login');
+  };
+
+  // User Self-Registration (Sign Up)
+  const registerUser = async (data: {
+    name: string;
+    username: string;
+    email: string;
+    phone?: string;
+    role?: UserRole;
+    password: string;
+    autoLogin?: boolean;
+  }): Promise<{ success: boolean; error?: string; user?: User }> => {
+    if (!data.name || !data.name.trim()) {
+      return { success: false, error: 'Full name is required.' };
+    }
+
+    const cleanUsername = data.username.toLowerCase().trim();
+    if (!cleanUsername || cleanUsername.length < 3) {
+      return { success: false, error: 'Username must be at least 3 characters long.' };
+    }
+
+    // Check if username already exists
+    if (allUsers.some(u => u.username.toLowerCase() === cleanUsername)) {
+      return { success: false, error: `Username @${cleanUsername} is already registered.` };
+    }
+
+    const cleanEmail = data.email.toLowerCase().trim();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, error: 'Please enter a valid email address.' };
+    }
+
+    if (allUsers.some(u => u.email.toLowerCase() === cleanEmail)) {
+      return { success: false, error: `Email address ${cleanEmail} is already registered.` };
+    }
+
+    const val = validatePasswordStrength(data.password);
+    if (!val.valid) {
+      return { success: false, error: val.errors[0] };
+    }
+
+    const { hash, salt } = await hashPassword(data.password);
+
+    const assignedRole: UserRole = data.role || 'employee';
+
+    const newUser: User = {
+      id: `usr-${Date.now()}`,
+      name: data.name.trim(),
+      username: cleanUsername,
+      email: cleanEmail,
+      phone: data.phone?.trim() || undefined,
+      role: assignedRole,
+      status: 'active',
+      passwordHash: hash,
+      salt,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastLogin: data.autoLogin !== false ? new Date().toISOString() : undefined
+    };
+
+    setAllUsers(prev => [...prev, newUser]);
+    logAction('User Registered', 'Auth', newUser.id, `User @${newUser.username} registered account with role ${newUser.role}`);
+
+    if (data.autoLogin !== false) {
+      const token = generateSessionToken();
+      const session: AuthSession = {
+        token,
+        userId: newUser.id,
+        username: newUser.username,
+        name: newUser.name,
+        role: newUser.role,
+        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+        loginTime: new Date().toISOString()
+      };
+
+      setCurrentSession(session);
+      setAuthFlashMessage(`Welcome to the workshop, ${newUser.name}! Your account has been created.`);
+
+      const regSession: UserSessionRecord = {
+        id: `sess-${Date.now()}`,
+        userId: newUser.id,
+        userName: newUser.name,
+        userRole: newUser.role,
+        loginTimestamp: new Date().toISOString(),
+        status: 'Active',
+        deviceInfo: typeof navigator !== 'undefined'
+          ? `${navigator.userAgent.includes('Windows') ? 'Windows Terminal' : navigator.userAgent.includes('Android') ? 'Android Mobile' : 'Web Terminal'}`
+          : 'Garage Terminal'
+      };
+      setUserSessions(prev => [regSession, ...prev]);
+      setActiveView('dashboard');
+    } else {
+      setAuthFlashMessage(`Account @${newUser.username} registered successfully! You can now log in.`);
+      setActiveView('login');
+    }
+
+    return { success: true, user: newUser };
   };
 
   // Owner provisions internal user
@@ -2440,6 +2546,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         authFlashMessage,
         setAuthFlashMessage,
         login,
+        registerUser,
         logout,
         completeFirstTimeSetup,
         createUserByOwner,

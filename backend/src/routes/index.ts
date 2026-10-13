@@ -17,6 +17,7 @@ import dashboardRoutes from './dashboard.routes';
 import backupRoutes from './backup.routes';
 import auditRoutes from './audit.routes';
 import settingRoutes from './setting.routes';
+import uploadRoutes from './upload.routes';
 
 const apiRouter = Router();
 
@@ -41,5 +42,6 @@ apiRouter.use('/dashboard', dashboardRoutes);
 apiRouter.use('/backup', backupRoutes);
 apiRouter.use('/audit-logs', auditRoutes);
 apiRouter.use('/settings', settingRoutes);
+apiRouter.use('/uploads', uploadRoutes);
 
 export default apiRouter;

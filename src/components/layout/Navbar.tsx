@@ -71,6 +71,7 @@ export const Navbar: React.FC = () => {
   // View title labels for breadcrumbs
   const viewTitles: Record<AppView, { section: string; title: string }> = {
     login: { section: 'Auth', title: 'Sign In' },
+    signup: { section: 'Auth', title: 'Create Account' },
     setup: { section: 'Auth', title: 'First-time Setup' },
     registration_disabled: { section: 'Auth', title: 'Private System' },
     dashboard: { section: 'Workshop', title: 'Operational Floor' },

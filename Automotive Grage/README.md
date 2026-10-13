@@ -1,81 +1,60 @@
-# Automotive Garage (Apex Auto POS & Workshop Management)
+# Automotive Garage Management & POS System
 
-This repository contains the complete Automotive Workshop Management platform separated into dedicated `backend` and `frontend` sub-folders.
+This project contains the complete Automotive Garage & Workshop Management platform, cleanly separated into **backend** and **frontend** subfolders with all testing/dummy data removed so you can input your own live records.
+
+## Directory Structure
 
 ```
 Automotive Grage/
-├── backend/                  # Server-side REST API & Database engine
-│   ├── src/                  # Express controllers, services, routes, repositories, middleware
-│   ├── prisma/               # Prisma schema & seed scripts
-│   ├── tests/                # Test suites
-│   ├── package.json          # Backend dependencies & scripts
-│   ├── tsconfig.json         # Backend TypeScript configuration
-│   ├── .env.example          # Sample backend environment variables
-│   └── README.md             # Backend architecture documentation
+├── README.md               # Overview and setup guide
 │
-└── frontend/                 # Client-side Workshop Management & POS Web App
-    ├── src/                  # React 19 components, context, hooks, types
-    ├── index.html            # HTML entry point
-    ├── vite.config.ts        # Vite configuration with Tailwind CSS v4
-    ├── tsconfig.json         # Frontend TypeScript configuration
-    ├── package.json          # Frontend dependencies & scripts
-    ├── vercel.json           # Vercel deployment configuration
-    ├── .env.example          # Frontend environment variables
-    └── README.md             # Frontend documentation
+├── backend/                # REST API & Database engine (Node.js, Express, Prisma)
+│   ├── src/
+│   │   ├── controllers/    # API Controllers (customers, vehicles, jobs, inventory, invoices)
+│   │   ├── services/       # Business logic services
+│   │   ├── routes/         # Express router endpoints
+│   │   ├── middleware/     # Auth, role check, audit, error handler
+│   │   └── database/       # Prisma client initialization
+│   ├── prisma/
+│   │   ├── schema.prisma   # PostgreSQL/SQLite relational schema
+│   │   └── seed.ts         # Clean initializer (0 mock records)
+│   ├── package.json        # Backend dependencies & scripts
+│   ├── tsconfig.json       # TypeScript configuration
+│   └── .env.example        # Environment variables template
+│
+└── frontend/               # Single-Page Web Application (React, TypeScript, Tailwind, Vite)
+    ├── src/
+    │   ├── components/     # UI Views (POS, Job Cards, Inventory, Invoices, Customers, etc.)
+    │   ├── context/        # ShopContext state management
+    │   ├── data/           # Clean initial data (0 dummy records)
+    │   ├── db/             # Local database init scripts
+    │   ├── types/          # TypeScript interface definitions
+    │   └── utils/          # UAE VAT, currency, date, and calculation helpers
+    ├── index.html          # Application entry point
+    ├── vite.config.ts      # Vite bundler configuration
+    ├── package.json        # Frontend dependencies & npm scripts
+    ├── tsconfig.json       # TypeScript configuration
+    ├── vercel.json         # Vercel deployment configuration
+    └── .env.example        # Frontend environment variables template
 ```
 
----
+## Getting Started
 
-## 🚀 Getting Started
-
-### 1. Backend Setup (`/backend`)
+### 1. Backend Setup
 ```bash
 cd backend
-
-# Install dependencies
 npm install
-
-# Setup database (Prisma)
-npm run db:generate
-npm run db:migrate
-npm run db:seed
-
-# Start development server
 npm run dev
 ```
-*Backend runs on port `5000` (or `PORT` specified in `.env`).*
 
----
-
-### 2. Frontend Setup (`/frontend`)
+### 2. Frontend Setup
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
-*Frontend runs on port `3000` via Vite.*
 
----
-
-### 3. Production Build
-
-#### Backend Build:
-```bash
-cd backend
-npm run build
-npm start
-```
-
-#### Frontend Build:
-```bash
-cd frontend
-npm run build
-# Output will be located in frontend/dist/
-```
-
-#### Deployment to Vercel:
-The `frontend/` folder contains a pre-configured `vercel.json` with SPA routing rewrites and asset caching headers.
+### Owner Login Credentials
+- **Username:** `umair`
+- **Password:** `umair123#`
+- **Role:** Owner / Master Administrator

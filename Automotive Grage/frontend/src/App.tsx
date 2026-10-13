@@ -8,6 +8,7 @@ import { ShopProvider, useShop, AppView } from './context/ShopContext';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
 import { LoginPage } from './components/auth/LoginPage';
+import { SignupPage } from './components/auth/SignupPage';
 import { SetupPage } from './components/auth/SetupPage';
 import { RegistrationDisabledPage } from './components/auth/RegistrationDisabledPage';
 import { UsersManagementView } from './components/users/UsersManagementView';
@@ -38,9 +39,9 @@ import { KeyboardShortcutsModal } from './components/common/KeyboardShortcutsMod
 const WorkshopAppContent: React.FC = () => {
   const { activeView, setupCompleted, currentUser, canAccess } = useShop();
 
-  // 1. Explicit public registration attempt
-  if (activeView === 'registration_disabled') {
-    return <RegistrationDisabledPage />;
+  // 1. Account Self-Registration / Sign Up
+  if (activeView === 'signup' || activeView === 'registration_disabled') {
+    return <SignupPage />;
   }
 
   // 2. First-time Owner Setup required if database has no owner
