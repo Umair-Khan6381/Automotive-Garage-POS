@@ -281,35 +281,33 @@ garage-pos/
 
 ---
 
-## 10. Vercel Cloud Deployment Guide (Dubai Private Garage)
+## 10. Vercel Cloud Deployment Guide (MongoDB & Dubai Private Garage)
 
-This application is ready to deploy directly to **Vercel** with **Turso Cloud** persistent SQLite/libSQL database and **Vercel Blob** storage.
+This application is ready to deploy directly to **Vercel** with **MongoDB** (MongoDB Atlas or self-hosted) and **Vercel Blob** storage.
 
-### Step 1: Set up Turso Cloud Database (Persistent SQLite)
-1. Install Turso CLI or log in at [turso.tech](https://turso.tech):
+### Step 1: Set up MongoDB Database
+1. Create a free database on [MongoDB Atlas](https://cloud.mongodb.com) or use local MongoDB:
+   - Create a free Shared Cluster (M0).
+   - Under **Database Access**, create a user (e.g. `garage_admin`).
+   - Under **Network Access**, allow access from anywhere (`0.0.0.0/0` for Vercel Serverless Functions).
+   - Under **Connect > Drivers**, copy your connection string:
+     ```
+     DATABASE_URL="mongodb+srv://garage_admin:<password>@cluster0.mongodb.net/garage_pos?retryWrites=true&w=majority"
+     ```
+2. Push collections and indexes to MongoDB:
    ```bash
-   # Install CLI
-   curl -sSfL https://get.tur.so/install.sh | bash
-
-   # Create cloud database for your garage
-   turso db create garage-pos
-
-   # Obtain connection URL (e.g., libsql://garage-pos-yourorg.turso.io)
-   turso db show garage-pos --url
-
-   # Generate long-lived Auth Token
-   turso db tokens create garage-pos
+   DATABASE_URL="<your_mongodb_connection_string>" npx prisma db push
    ```
-2. Push the schema to Turso:
+3. Initialize Dubai garage settings & owner account:
    ```bash
-   TURSO_DATABASE_URL="<your_turso_url>" TURSO_AUTH_TOKEN="<your_turso_token>" npx prisma db push
+   DATABASE_URL="<your_mongodb_connection_string>" npm run db:seed
    ```
 
 ### Step 2: Push to GitHub
 ```bash
 git init
 git add .
-git commit -m "Automotive Garage POS - Vercel Ready"
+git commit -m "Automotive Garage POS - MongoDB Ready"
 git remote add origin https://github.com/your-username/garage-pos.git
 git branch -M main
 git push -u origin main
@@ -323,8 +321,7 @@ git push -u origin main
    - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
 4. Add the following **Environment Variables** in the Vercel dashboard:
-   - `TURSO_DATABASE_URL`: `libsql://your-garage-db.turso.io`
-   - `TURSO_AUTH_TOKEN`: `your_turso_auth_token`
+   - `DATABASE_URL`: `mongodb+srv://garage_admin:<password>@cluster0.mongodb.net/garage_pos?retryWrites=true&w=majority`
    - `JWT_SECRET`: `generate_a_random_32_byte_secret`
    - `CURRENCY`: `AED`
    - `TIMEZONE`: `Asia/Dubai`
@@ -332,13 +329,21 @@ git push -u origin main
 5. *(Optional for Receipts/Proof Storage)* Under **Storage** in your Vercel project, add a **Vercel Blob** database. Vercel automatically sets `BLOB_READ_WRITE_TOKEN`.
 6. Click **Deploy**. Your garage POS is live on your private HTTPS domain!
 
-### Step 4: Backup & Migrate Data
-- **Backup Local Records**:
+### Step 4: Visual Database Inspection (Prisma Studio)
+```bash
+# View all MongoDB collections and live data visually
+npm run studio
+# Opens: http://localhost:5555
+```
+
+### Step 5: Backup & Migrate Data
+- **Backup Records to JSON**:
   ```bash
   npm run db:backup
   ```
-- **Migrate to Turso Cloud**:
+- **Migrate to MongoDB**:
   ```bash
-  npm run db:migrate:turso
+  DATABASE_URL="<your_mongodb_url>" npm run db:migrate:mongo
   ```
+
 

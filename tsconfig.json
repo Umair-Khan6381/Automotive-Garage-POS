@@ -18,14 +18,14 @@
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
-        "./*"
+        "./Automotive-Garage-POS/frontend/src/*"
       ]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
   "include": [
-    "src"
+    "Automotive-Garage-POS/frontend/src"
   ],
   "exclude": [
     "node_modules",

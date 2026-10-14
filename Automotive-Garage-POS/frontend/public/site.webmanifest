@@ -1,0 +1,16 @@
+{
+  "name": "Apex Auto POS & Workshop Management",
+  "short_name": "Apex Auto POS",
+  "description": "Complete automotive workshop management platform for Dubai, UAE",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F5F3",
+  "theme_color": "#1B4D3E",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

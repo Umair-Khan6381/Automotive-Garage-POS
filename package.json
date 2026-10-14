@@ -5,21 +5,22 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "prisma generate && vite build",
-    "postinstall": "prisma generate",
+    "build": "prisma generate --schema=Automotive-Garage-POS/backend/prisma/schema.prisma && vite build",
+    "postinstall": "prisma generate --schema=Automotive-Garage-POS/backend/prisma/schema.prisma",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx backend/tests/run-tests.ts",
-    "db:generate": "prisma generate",
-    "db:seed": "tsx backend/prisma/seed.ts",
-    "db:backup": "tsx database/scripts/backup-db.ts",
-    "db:migrate:turso": "tsx database/scripts/migrate-to-turso.ts",
-    "desktop:dev": "vite build && electron electron/main.js",
-    "desktop:build": "vite build && electron-builder",
-    "mobile:sync": "npx cap sync",
-    "mobile:android": "npx cap open android",
-    "mobile:ios": "npx cap open ios"
+    "test": "tsx Automotive-Garage-POS/backend/tests/run-tests.ts",
+    "studio": "prisma studio --schema=Automotive-Garage-POS/backend/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=Automotive-Garage-POS/backend/prisma/schema.prisma",
+    "db:generate": "prisma generate --schema=Automotive-Garage-POS/backend/prisma/schema.prisma",
+    "db:seed": "tsx Automotive-Garage-POS/backend/prisma/seed.ts",
+    "db:backup": "tsx Automotive-Garage-POS/backend/database/backup-db.ts",
+    "db:migrate:mongo": "tsx Automotive-Garage-POS/backend/database/migrate-to-mongodb.ts",
+    "db:push": "prisma db push --schema=Automotive-Garage-POS/backend/prisma/schema.prisma"
+  },
+  "prisma": {
+    "schema": "Automotive-Garage-POS/backend/prisma/schema.prisma"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
