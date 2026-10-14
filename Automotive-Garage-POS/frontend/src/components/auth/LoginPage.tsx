@@ -249,7 +249,7 @@ export const LoginPage: React.FC = () => {
                 type="text"
                 required
                 autoComplete="username"
-                placeholder="e.g. umair or owner@example.com"
+                placeholder="Enter your username or email"
                 value={identifier}
                 onChange={e => setIdentifier(e.target.value)}
                 disabled={lockoutSeconds > 0 || isLoading}
@@ -313,22 +313,6 @@ export const LoginPage: React.FC = () => {
               >
                 <span>{isLoading ? 'Authenticating...' : 'Sign In'}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            {/* Quick Fill Owner Account button */}
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setIdentifier('umair');
-                  setPassword('umair123#');
-                  setErrorMessage(null);
-                }}
-                className="inline-flex items-center gap-1.5 text-xs text-[#1B4D3E] hover:underline font-semibold"
-              >
-                <ShieldCheck className="h-3.5 w-3.5" />
-                <span>Fill Owner Credentials (umair / umair123#)</span>
               </button>
             </div>
           </form>
